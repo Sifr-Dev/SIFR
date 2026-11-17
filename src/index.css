@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Instrument Sans";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/InstrumentSans-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Instrument Sans";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/InstrumentSans-Bold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/GeistMono-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/GeistMono-Bold.ttf") format("truetype");
+}
+
+:root {
+  --void: #04060b;
+  --surface: #0a0d13;
+  --raised: #171b21;
+  --line: #2d3038;
+  --text: #f3f7fe;
+  --text-2: #b9bec7;
+  --muted: #9498a1;
+  --key: #eab444;
+  --key-strong: #d39900;
+  --key-ink: #04060b;
+  --garble: #fc5855;
+  --font-stabilis: "Instrument Sans", system-ui, -apple-system, sans-serif;
+  --font-mobilis: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  --detent: 100ms steps(1, end);
+  --reveal: 240ms cubic-bezier(0.2, 0, 0, 1);
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    border-radius: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    background-color: var(--void);
+    color: var(--text);
+    font-family: var(--font-stabilis);
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--void);
+    color: var(--text);
+    font-family: var(--font-stabilis);
+    line-height: 1.55;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-stabilis);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+
+  button, a, input, select, textarea {
+    font-family: inherit;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--key);
+    outline-offset: 2px;
+  }
+}
+
+.font-stabilis {
+  font-family: var(--font-stabilis);
+}
+
+.font-mobilis {
+  font-family: var(--font-mobilis);
+  font-variant-numeric: tabular-nums;
+}
+
+.chamfer {
+  clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%);
+}
+
+.chamfer-sm {
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes detent-pulse {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+}
+
+.animate-detent-pulse {
+  animation: detent-pulse 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (pointer: fine) {
+  html[data-custom-cursor="active"],
+  html[data-custom-cursor="active"] body,
+  html[data-custom-cursor="active"] a,
+  html[data-custom-cursor="active"] button,
+  html[data-custom-cursor="active"] canvas,
+  html[data-custom-cursor="active"] [role="tab"] {
+    cursor: none !important;
+  }
+}
+

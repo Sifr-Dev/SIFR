@@ -1,0 +1,6 @@
+{
+  "name": "SIFR — Built From Zero",
+  "description": "Architectural systems, machine learning, and native graphics portfolio of Mohamed Salahi (SIFR). Built from zero.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
