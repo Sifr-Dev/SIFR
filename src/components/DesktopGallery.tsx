@@ -1,21 +1,42 @@
-import { useMemo, useState } from 'react';
-import { ArrowUpRight, Play, Terminal, Volume2, VolumeX, FileText } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  FileText,
+  Maximize2,
+  Play,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import {
   ZERO_DOCTRINES,
   type GitHubActivityItem,
   type GitHubProfileSnapshot,
-  type RepoCategory,
   type RepoSpec,
 } from '../data/repos';
+import { getStoryForRepo } from '../data/stories';
 import type { GitHubAggregateStats } from '../lib/githubStats';
 import { formatRelativeDate } from '../lib/githubStats';
+import {
+  CANONICAL_TRACK_ORDER,
+  getActForRepoId,
+  getStationCode,
+  type RideState,
+} from '../lib/narrative';
 import type { SyncSource } from '../hooks/useGitHubTelemetry';
 import { haptics } from '../lib/haptics';
 import { SifrMark } from './SifrMark';
-import { PhysicsCipherCanvas } from './PhysicsCipherCanvas';
+import { CinematicEntrance } from './CinematicEntrance';
+import { AmbientRideCanvas } from './AmbientRideCanvas';
 import { ProjectPhysicsIllustration } from './ProjectPhysicsIllustration';
 import { InteractiveRepoDemo } from './InteractiveDemos';
+import { ReadmeShowcase } from './ReadmeShowcase';
 import { GitHubTelemetrySection } from './GitHubTelemetrySection';
+
+type StationViewTab = 'simulation' | 'story-readme' | 'architecture';
 
 interface DesktopGalleryProps {
   profile: GitHubProfileSnapshot;
@@ -27,6 +48,12 @@ interface DesktopGalleryProps {
   onShiftChange: (s: number) => void;
   audioEnabled: boolean;
   onToggleAudio: () => void;
+  rideState: RideState;
+  onEnterRide: () => void;
+  onAdvanceRide: () => void;
+  onStepBackRide: () => void;
+  onJumpToStation: (index: number) => void;
+  onRestartRide: () => void;
   onOpenRepoModal: (repo: RepoSpec) => void;
   onOpenShowreel: () => void;
   paused?: boolean;
@@ -42,523 +69,640 @@ export function DesktopGallery({
   onShiftChange,
   audioEnabled,
   onToggleAudio,
+  rideState,
+  onEnterRide,
+  onAdvanceRide,
+  onStepBackRide,
+  onJumpToStation,
+  onRestartRide,
   onOpenRepoModal,
   onOpenShowreel,
   paused = false,
 }: DesktopGalleryProps) {
-  const [filter, setFilter] = useState<'all' | RepoCategory>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [labRepoId, setLabRepoId] = useState<string>('tachyon-fetch');
-
-  const filteredRepos = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return repos.filter((r) => {
-      if (filter !== 'all' && r.category !== filter) return false;
-      if (!q) return true;
-      return (
-        r.name.toLowerCase().includes(q) ||
-        r.subtitle.toLowerCase().includes(q) ||
-        r.primaryLanguage.toLowerCase().includes(q) ||
-        r.stack.some((s) => s.toLowerCase().includes(q))
-      );
-    });
-  }, [repos, filter, searchQuery]);
-
-  const activeLabRepo = useMemo(
-    () => repos.find((r) => r.id === labRepoId) ?? repos[0],
-    [repos, labRepoId]
+  const [stationTab, setStationTab] = useState<StationViewTab>('simulation');
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const [actCurtain, setActCurtain] = useState<{ roman: string; title: string; subtitle: string } | null>(
+    null
   );
+  const prevActIdRef = useRef<string | null>(null);
 
-  const featuredRepos = filteredRepos.filter((r) => r.featured);
-  const archiveRepos = filteredRepos.filter((r) => !r.featured);
+  const orderedRepos = useMemo(() => {
+    const byId = new Map(repos.map((r) => [r.id, r]));
+    return CANONICAL_TRACK_ORDER.map((id) => byId.get(id)).filter((r): r is RepoSpec => Boolean(r));
+  }, [repos]);
 
-  return (
-    <div id="top" className="min-h-screen bg-[#04060b] text-[#f3f7fe]">
-      {/* Strict 3-Zone Top Bar Contract */}
-      <header className="sticky top-0 z-30 bg-[#04060b]/95 backdrop-blur-xs border-b border-[#2d3038]">
-        <div className="max-w-[1180px] mx-auto px-8 h-16 flex items-center justify-between gap-8">
-          {/* Zone 1: Single-line Brand Wordmark */}
-          <a
-            href="#top"
-            onClick={() => haptics.trigger('tap')}
-            className="inline-flex items-center gap-3 whitespace-nowrap shrink-0"
-          >
-            <SifrMark size={24} shift={shift} />
-            <span className="font-mobilis text-[15px] font-bold tracking-[0.06em] text-[#f3f7fe]">
-              SIFR
-            </span>
-          </a>
+  const currentRepo = orderedRepos[rideState.currentIndex] ?? orderedRepos[0];
+  const currentStory = useMemo(() => getStoryForRepo(currentRepo.id), [currentRepo.id]);
+  const currentAct = useMemo(() => getActForRepoId(currentRepo.id), [currentRepo.id]);
+  const nextRepo =
+    rideState.currentIndex < orderedRepos.length - 1
+      ? orderedRepos[rideState.currentIndex + 1]
+      : null;
+  const prevRepo =
+    rideState.currentIndex > 0 ? orderedRepos[rideState.currentIndex - 1] : null;
 
-          {/* Zone 2: 4 Clean Single-Line Nav Links */}
-          <nav aria-label="Primary navigation" className="flex items-center gap-7">
-            {[
-              { href: '#works', label: 'Works' },
-              { href: '#lab', label: 'Live Lab' },
-              { href: '#activity', label: 'Activity' },
-              { href: '#dossier', label: 'Dossier' },
-            ].map((item) => (
+  // Brief atmospheric Act Intertitle whenever entering a new Act forward
+  useEffect(() => {
+    if (!rideState.hasEntered || rideState.hasExited) {
+      prevActIdRef.current = null;
+      return;
+    }
+    const prevActId = prevActIdRef.current;
+    prevActIdRef.current = currentAct.id;
+
+    if (prevActId && prevActId !== currentAct.id && direction === 1) {
+      setActCurtain({
+        roman: currentAct.roman,
+        title: currentAct.title,
+        subtitle: currentAct.subtitle,
+      });
+      const timer = window.setTimeout(() => setActCurtain(null), 950);
+      return () => window.clearTimeout(timer);
+    }
+  }, [currentAct.id, currentAct.roman, currentAct.subtitle, currentAct.title, direction, rideState.hasEntered, rideState.hasExited]);
+
+  // Reset tab cleanly on chapter transition
+  useEffect(() => {
+    setStationTab('simulation');
+    window.scrollTo(0, 0);
+  }, [rideState.currentIndex, rideState.hasExited]);
+
+  // Cinema keyboard pacing: ArrowRight -> Continue, ArrowLeft -> Step Back
+  useEffect(() => {
+    if (!rideState.hasEntered || rideState.hasExited || paused) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleAdvance();
+      } else if (e.key === 'ArrowLeft' && rideState.currentIndex > 0) {
+        e.preventDefault();
+        handleStepBack();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rideState.hasEntered, rideState.hasExited, rideState.currentIndex, paused]);
+
+  const handleAdvance = () => {
+    haptics.trigger('confirm');
+    setDirection(1);
+    onAdvanceRide();
+  };
+
+  const handleStepBack = () => {
+    if (rideState.currentIndex === 0) return;
+    haptics.trigger('tap');
+    setDirection(-1);
+    onStepBackRide();
+  };
+
+  // =========================================================================
+  // STAGE 1 · THE MAGNIFICENT GRAND ENTRY (Prologue)
+  // =========================================================================
+  if (!rideState.hasEntered) {
+    return (
+      <CinematicEntrance
+        shift={shift}
+        onShiftChange={onShiftChange}
+        audioEnabled={audioEnabled}
+        onToggleAudio={onToggleAudio}
+        onEnter={() => {
+          setDirection(1);
+          onEnterRide();
+        }}
+        onOpenShowreel={onOpenShowreel}
+        paused={paused}
+      />
+    );
+  }
+
+  // =========================================================================
+  // STAGE 3 · THE GRAND EXIT (Unlocked only after finishing Chapter 11)
+  // =========================================================================
+  if (rideState.hasExited) {
+    return (
+      <div className="min-h-screen bg-[#04060b] text-[#f3f7fe] relative">
+        <AmbientRideCanvas schematic="verrev-mesh" paused={paused} />
+
+      <header className="sticky top-0 z-30 bg-[#04060b]/96 border-b border-[#2d3038]">
+          <div className="max-w-[1200px] mx-auto px-8 h-16 flex items-center justify-between gap-8">
+            <div className="inline-flex items-center gap-3 whitespace-nowrap shrink-0">
+              <SifrMark size={24} shift={shift} />
+              <span className="text-[15px] font-bold tracking-[0.06em] text-[#f3f7fe]">SIFR</span>
+            </div>
+
+            <nav aria-label="Grand Exit navigation" className="flex items-center gap-7">
               <a
-                key={item.href}
-                href={item.href}
+                href="#finale"
                 onClick={() => haptics.trigger('tap')}
-                className="font-mobilis text-xs uppercase tracking-[0.12em] text-[#9498a1] hover:text-[#f3f7fe] hover:underline underline-offset-4 whitespace-nowrap shrink-0 transition-colors"
+                className="text-[13px] font-medium text-[#9ca2af] hover:text-[#f3f7fe] whitespace-nowrap shrink-0"
               >
-                {item.label}
+                Finale
               </a>
-            ))}
-          </nav>
+              <a
+                href="#atlas"
+                onClick={() => haptics.trigger('tap')}
+                className="text-[13px] font-medium text-[#9ca2af] hover:text-[#f3f7fe] whitespace-nowrap shrink-0"
+              >
+                Full Atlas
+              </a>
+              <a
+                href="#activity"
+                onClick={() => haptics.trigger('tap')}
+                className="text-[13px] font-medium text-[#9ca2af] hover:text-[#f3f7fe] whitespace-nowrap shrink-0"
+              >
+                GitHub Telemetry
+              </a>
+              <a
+                href="#doctrine"
+                onClick={() => haptics.trigger('tap')}
+                className="text-[13px] font-medium text-[#9ca2af] hover:text-[#f3f7fe] whitespace-nowrap shrink-0"
+              >
+                Doctrines
+              </a>
+            </nav>
 
-          {/* Zone 3: 1 Primary CTA */}
-          <div className="shrink-0">
             <button
               type="button"
               onClick={() => {
-                haptics.trigger('confirm');
-                onOpenRepoModal(activeLabRepo);
+                haptics.trigger('snapZero');
+                onRestartRide();
               }}
-              className="min-h-[40px] px-4 py-2 bg-[#eab444] hover:bg-[#d39900] text-[#04060b] font-mobilis text-xs font-bold uppercase tracking-[0.1em] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="min-h-[40px] px-4 py-2 bg-[#eab444] hover:bg-[#f2c15c] text-[#04060b] text-[13px] font-bold inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
             >
-              Launch Lab
+              <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+              Ride Again
             </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-[1180px] mx-auto px-8">
-        {/* Hero Split */}
-        <section className="py-10 lg:py-12 grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-10 items-center">
-          <div className="space-y-5">
-            <div className="font-mobilis text-xs uppercase tracking-[0.14em] text-[#9498a1]">
-              SIFR · صفر · Mohamed Salahi
+        <main className="relative z-10 max-w-[1200px] mx-auto px-8 py-12 space-y-16">
+          {/* Finale Hero */}
+          <motion.section
+            id="finale"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+            className="border border-[#eab444] bg-[#0a0d13]/95 chamfer p-8 sm:p-10 flex flex-wrap items-center justify-between gap-8"
+          >
+            <div className="space-y-3 max-w-2xl">
+              <p className="text-sm font-medium text-[#eab444]">
+                Finale · Chronicle Complete (11 / 11 Chapters)
+              </p>
+              <h1 className="text-3xl sm:text-5xl font-bold text-[#f3f7fe] leading-[1.08] text-balance">
+                From a 24-byte heap header to a post-quantum mesh OS.
+              </h1>
+              <p className="text-[16px] text-[#d2d7e2] leading-[1.65]">
+                Every system across all four acts has been inspected from zero. You may now revisit any
+                chapter directly below, run fullscreen simulations, inspect live GitHub telemetry, or
+                experience the opening gate again.
+              </p>
             </div>
-            <h1 className="text-[46px] xl:text-[56px] font-bold tracking-[-0.025em] leading-[1.06] text-[#f3f7fe] max-w-xl">
-              built from <span className="text-[#eab444]">zero.</span>
-            </h1>
-            <p className="text-base text-[#b9bec7] leading-relaxed max-w-[56ch]">
-              Systems, machine learning, and native graphics engineer. Head engineer and co-founder
-              at Argos Security. Every artifact below is built from first principles—from hand-marshaled
-              Wayland &amp; Vulkan shaders in Zig to post-quantum Rust kernels and sub-millisecond GPU kernels.
-            </p>
 
-            <div className="pt-1 flex flex-wrap items-center gap-4">
-              <a
-                href="#works"
-                onClick={() => haptics.trigger('confirm')}
-                className="min-h-[44px] px-6 py-3 bg-[#eab444] hover:bg-[#d39900] text-[#04060b] font-mobilis text-xs font-bold uppercase tracking-[0.1em] inline-flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
-              >
-                Explore 11 Works
-              </a>
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => {
                   haptics.trigger('tap');
                   onOpenShowreel();
                 }}
-                className="min-h-[44px] px-5 py-3 border border-[#2d3038] bg-[#0a0d13] hover:border-[#eab444] text-[#f3f7fe] font-mobilis text-xs uppercase tracking-[0.1em] inline-flex items-center gap-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="min-h-[44px] px-5 py-2.5 border border-[#2d3038] bg-[#04060b] hover:border-[#eab444] text-[14px] font-medium text-[#f3f7fe] inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
-                Brand Motion Reel
+                Motion Film
               </button>
-              <a
-                href={profile.htmlUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => haptics.trigger('tap')}
-                className="min-h-[44px] px-4 py-3 font-mobilis text-xs uppercase tracking-[0.1em] text-[#9498a1] hover:text-[#eab444] inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-              >
-                GitHub <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-              </a>
-            </div>
-          </div>
-
-          <div className="flex justify-center lg:justify-end">
-            <PhysicsCipherCanvas shift={shift} onShiftChange={onShiftChange} paused={paused} />
-          </div>
-        </section>
-
-        {/* Full-Width Quantitative Proof Strip */}
-        <section
-          aria-label="Verified engineering highlights"
-          className="border-y border-[#2d3038] py-5 grid grid-cols-2 lg:grid-cols-4 gap-6"
-        >
-          <div>
-            <div className="font-mobilis text-[11px] uppercase tracking-[0.12em] text-[#9498a1]">
-              Public Repositories
-            </div>
-            <div className="font-mobilis text-xl font-bold text-[#f3f7fe] mt-1">
-              {repos.length} Verified
-            </div>
-          </div>
-          <div>
-            <div className="font-mobilis text-[11px] uppercase tracking-[0.12em] text-[#9498a1]">
-              Verrev PQ Kernel
-            </div>
-            <div className="font-mobilis text-xl font-bold text-[#f3f7fe] mt-1">
-              31/31 Tests Pass
-            </div>
-          </div>
-          <div>
-            <div className="font-mobilis text-[11px] uppercase tracking-[0.12em] text-[#9498a1]">
-              RMSNorm JAX XLA
-            </div>
-            <div className="font-mobilis text-xl font-bold text-[#eab444] mt-1">
-              0.147 ms (22.8×)
-            </div>
-          </div>
-          <div>
-            <div className="font-mobilis text-[11px] uppercase tracking-[0.12em] text-[#9498a1]">
-              Cipher Wayland GPU
-            </div>
-            <div className="font-mobilis text-xl font-bold text-[#f3f7fe] mt-1">
-              24 Frames · Zero C
-            </div>
-          </div>
-        </section>
-
-        {/* Selected Works & Complete 11-Repo Gallery */}
-        <section id="works" className="py-16">
-          <div className="flex flex-wrap items-end justify-between gap-6 mb-8">
-            <div>
-              <p className="font-mobilis text-xs uppercase tracking-[0.14em] text-[#9498a1]">
-                Complete Repository Exhibition · 01–11
-              </p>
-              <h2 className="mt-2 text-2xl sm:text-3xl font-bold text-[#f3f7fe]">
-                Selected works &amp; live schematics.
-              </h2>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <div
-                role="tablist"
-                aria-label="Filter repositories by discipline"
-                className="flex items-center border border-[#2d3038] bg-[#0a0d13] p-1 gap-1"
-              >
-                {(
-                  [
-                    { key: 'all', label: `All (${stats.categoryCounts.all})` },
-                    { key: 'systems', label: `Systems (${stats.categoryCounts.systems})` },
-                    { key: 'ml', label: `ML & Vision (${stats.categoryCounts.ml})` },
-                    { key: 'infra', label: `Backend (${stats.categoryCounts.infra})` },
-                  ] as const
-                ).map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={filter === tab.key}
-                    onClick={() => {
-                      haptics.trigger('detent');
-                      setFilter(tab.key);
-                    }}
-                    className={`min-h-[36px] px-3 py-1.5 font-mobilis text-xs whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                      filter === tab.key
-                        ? 'bg-[#eab444] text-[#04060b] font-bold'
-                        : 'text-[#9498a1] hover:text-[#f3f7fe]'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Filter stack or repo..."
-                aria-label="Search repositories"
-                className="min-h-[44px] w-52 px-3 bg-[#0a0d13] border border-[#2d3038] font-mobilis text-xs text-[#f3f7fe] placeholder:text-[#9498a1]"
-              />
-            </div>
-          </div>
-
-          {filteredRepos.length === 0 ? (
-            <div className="border border-[#2d3038] bg-[#0a0d13] p-10 text-center space-y-3">
-              <p className="font-mobilis text-sm text-[#b9bec7]">
-                No repositories match "{searchQuery}".
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  haptics.trigger('tap');
-                  setFilter('all');
-                  setSearchQuery('');
-                }}
-                className="min-h-[40px] px-4 py-2 bg-[#eab444] text-[#04060b] font-mobilis text-xs font-bold uppercase cursor-pointer"
-              >
-                Reset Filter
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {/* Flagship 2-Column Chamfered Showcase */}
-              {featuredRepos.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-                  {featuredRepos.map((repo) => (
-                    <article
-                      key={repo.id}
-                      className="border border-[#2d3038] bg-[#0a0d13] chamfer flex flex-col justify-between hover:border-[#eab444]/70 transition-colors"
-                    >
-                      <div>
-                        <ProjectPhysicsIllustration schematic={repo.schematic} heightClass="h-44" />
-                        <div className="p-6 space-y-3">
-                          <div className="flex items-center gap-2 font-mobilis text-xs text-[#9498a1]">
-                            <span className="text-[#eab444]">{repo.primaryLanguage}</span>
-                            <span aria-hidden="true">·</span>
-                            <span>{repo.categoryLabel}</span>
-                            <span aria-hidden="true">·</span>
-                            <span>{formatRelativeDate(repo.updatedAt)}</span>
-                          </div>
-                          <h3 className="text-xl font-bold text-[#f3f7fe]">
-                            {repo.name} — {repo.subtitle}
-                          </h3>
-                          <p className="text-sm text-[#b9bec7] leading-relaxed">
-                            {repo.summary}
-                          </p>
-                          <div className="pt-1 font-mobilis text-xs text-[#eab444]">
-                            {repo.proofMetric}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="px-6 py-4 border-t border-[#2d3038] flex items-center justify-between gap-4">
-                        <button
-                          type="button"
-                          aria-label={`Open live demo for ${repo.name}`}
-                          onClick={() => {
-                            haptics.trigger('confirm');
-                            onOpenRepoModal(repo);
-                          }}
-                          className="min-h-[40px] px-4 py-2 bg-[#171b21] hover:bg-[#eab444] hover:text-[#04060b] border border-[#2d3038] hover:border-[#eab444] font-mobilis text-xs font-bold uppercase tracking-wider text-[#f3f7fe] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                        >
-                          Open Live Demo
-                        </button>
-                        <a
-                          href={repo.htmlUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={() => haptics.trigger('tap')}
-                          className="min-h-[40px] px-2 inline-flex items-center gap-1 font-mobilis text-xs text-[#9498a1] hover:text-[#eab444] whitespace-nowrap shrink-0"
-                        >
-                          GitHub <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                        </a>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-
-              {/* Remaining Public Repositories 3-Column Matrix */}
-              {archiveRepos.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-                  {archiveRepos.map((repo) => (
-                    <article
-                      key={repo.id}
-                      className="border border-[#2d3038] bg-[#0a0d13] flex flex-col justify-between hover:border-[#eab444]/70 transition-colors"
-                    >
-                      <div>
-                        <ProjectPhysicsIllustration schematic={repo.schematic} heightClass="h-32" />
-                        <div className="p-5 space-y-2.5">
-                          <div className="flex items-center gap-2 font-mobilis text-[11px] text-[#9498a1]">
-                            <span className="text-[#eab444]">{repo.primaryLanguage}</span>
-                            <span aria-hidden="true">·</span>
-                            <span>{formatRelativeDate(repo.updatedAt)}</span>
-                          </div>
-                          <h3 className="text-lg font-bold text-[#f3f7fe]">{repo.name}</h3>
-                          <p className="text-xs text-[#b9bec7] leading-relaxed line-clamp-3">
-                            {repo.summary}
-                          </p>
-                          <div className="font-mobilis text-[11px] text-[#eab444] pt-1">
-                            {repo.proofMetric}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="px-5 py-3.5 border-t border-[#2d3038] flex items-center justify-between gap-3">
-                        <button
-                          type="button"
-                          aria-label={`Open interactive demo for ${repo.name}`}
-                          onClick={() => {
-                            haptics.trigger('confirm');
-                            onOpenRepoModal(repo);
-                          }}
-                          className="min-h-[38px] px-3 py-1.5 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] hover:text-[#eab444] font-mobilis text-xs text-[#f3f7fe] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                        >
-                          Interactive Demo
-                        </button>
-                        <a
-                          href={repo.htmlUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={() => haptics.trigger('tap')}
-                          className="min-h-[38px] inline-flex items-center gap-1 font-mobilis text-xs text-[#9498a1] hover:text-[#eab444] whitespace-nowrap shrink-0"
-                        >
-                          Repo <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                        </a>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* Inline Interactive Engineering Lab */}
-        <section id="lab" className="py-16 border-t border-[#2d3038]">
-          <div className="flex flex-wrap items-baseline justify-between gap-4 mb-6">
-            <div>
-              <p className="font-mobilis text-xs uppercase tracking-[0.14em] text-[#9498a1]">
-                Interactive Sandbox · Real Logic
-              </p>
-              <h2 className="mt-2 text-2xl sm:text-3xl font-bold text-[#f3f7fe]">
-                Inspect running simulations.
-              </h2>
-            </div>
-            <div className="font-mobilis text-xs text-[#9498a1]">
-              Select any of the {repos.length} public repositories below
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 items-stretch">
-            <div className="border border-[#2d3038] bg-[#0a0d13] divide-y divide-[#2d3038]">
-              {repos.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => {
-                    haptics.trigger('detent');
-                    setLabRepoId(r.id);
-                  }}
-                  className={`w-full min-h-[44px] px-4 py-2.5 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer ${
-                    r.id === activeLabRepo.id
-                      ? 'bg-[#171b21] text-[#eab444]'
-                      : 'text-[#b9bec7] hover:bg-[#171b21]/50 hover:text-[#f3f7fe]'
-                  }`}
-                >
-                  <span className="font-mobilis text-xs font-bold truncate">{r.name}</span>
-                  <span className="font-mobilis text-[11px] text-[#9498a1] shrink-0">
-                    {r.primaryLanguage}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="border border-[#2d3038] bg-[#0a0d13] chamfer p-6 flex flex-col justify-between space-y-5">
-              <div className="flex flex-wrap items-baseline justify-between gap-4 border-b border-[#2d3038] pb-4">
-                <div>
-                  <div className="flex items-center gap-2 font-mobilis text-xs text-[#eab444]">
-                    <Terminal className="w-4 h-4" aria-hidden="true" />
-                    <span>{activeLabRepo.name}</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-[#f3f7fe] mt-1">
-                    {activeLabRepo.subtitle}
-                  </h3>
-                </div>
-                <a
-                  href={activeLabRepo.htmlUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => haptics.trigger('tap')}
-                  className="min-h-[38px] px-3 py-1.5 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] font-mobilis text-xs text-[#f3f7fe] inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-                >
-                  Inspect Source <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                </a>
-              </div>
-
-              <InteractiveRepoDemo repo={activeLabRepo} />
-            </div>
-          </div>
-        </section>
-
-        {/* Live GitHub Telemetry & Activity */}
-        <GitHubTelemetrySection
-          profile={profile}
-          stats={stats}
-          activity={activity}
-          syncSource={syncSource}
-          onSelectRepoByName={(name) => {
-            const match = repos.find((r) => r.name.toLowerCase() === name.toLowerCase());
-            if (match) onOpenRepoModal(match);
-          }}
-        />
-
-        {/* Zero Doctrine & Brand Dossier */}
-        <section id="dossier" className="py-16 border-t border-[#2d3038]">
-          <div className="flex flex-wrap items-baseline justify-between gap-4 mb-8">
-            <div>
-              <p className="font-mobilis text-xs uppercase tracking-[0.14em] text-[#9498a1]">
-                Zero Doctrine &amp; Dossier
-              </p>
-              <h2 className="mt-2 text-2xl sm:text-3xl font-bold text-[#f3f7fe]">
-                Open mechanism, secret key.
-              </h2>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
               <a
                 href="/brand/sifr-cv.pdf"
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => haptics.trigger('tap')}
-                className="min-h-[42px] px-4 py-2 border border-[#2d3038] bg-[#0a0d13] hover:border-[#eab444] font-mobilis text-xs text-[#f3f7fe] inline-flex items-center gap-2 whitespace-nowrap shrink-0"
+                className="min-h-[44px] px-5 py-2.5 bg-[#eab444] hover:bg-[#f2c15c] text-[#04060b] text-[14px] font-bold inline-flex items-center gap-2 whitespace-nowrap shrink-0"
               >
-                <FileText className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
+                <FileText className="w-4 h-4" aria-hidden="true" />
                 Curriculum Vitae (PDF)
               </a>
+            </div>
+          </motion.section>
+
+          {/* Complete Unlocked Exhibition Atlas */}
+          <section id="atlas" className="space-y-6">
+            <div>
+              <p className="text-xs font-medium text-[#eab444]">Complete Exhibition Atlas</p>
+              <h2 className="mt-1.5 text-2xl sm:text-3xl font-bold text-[#f3f7fe]">
+                Revisit any of the eleven systems.
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {orderedRepos.map((repo, idx) => {
+                const story = getStoryForRepo(repo.id);
+                const act = getActForRepoId(repo.id);
+                return (
+                  <div
+                    key={repo.id}
+                    className="border border-[#2d3038] bg-[#0a0d13]/95 p-5 flex flex-col justify-between gap-4 hover:border-[#eab444] transition-colors"
+                  >
+                    <div className="space-y-2">
+                      <div className="text-xs text-[#9ca2af] flex items-center justify-between gap-2">
+                        <span className="text-[#eab444] font-medium">
+                          {getStationCode(idx)} · {act.roman}
+                        </span>
+                        <span>{repo.primaryLanguage}</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-[#f3f7fe]">{story.chapterTitle}</h3>
+                      <p className="text-sm text-[#d2d7e2] leading-relaxed line-clamp-2">
+                        {repo.name} — {repo.subtitle}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-3 border-t border-[#2d3038]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          haptics.trigger('detent');
+                          onJumpToStation(idx);
+                        }}
+                        className="text-[13px] font-bold text-[#eab444] hover:underline cursor-pointer"
+                      >
+                        Re-enter Scene
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          haptics.trigger('tap');
+                          onOpenRepoModal(repo);
+                        }}
+                        className="text-[13px] text-[#9ca2af] hover:text-[#f3f7fe] cursor-pointer"
+                      >
+                        Open Lab
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <GitHubTelemetrySection
+            profile={profile}
+            stats={stats}
+            activity={activity}
+            syncSource={syncSource}
+            onSelectRepoByName={(name) => {
+              const found = orderedRepos.find((r) => r.name.toLowerCase() === name.toLowerCase());
+              if (found) onOpenRepoModal(found);
+            }}
+          />
+
+          {/* Five Zero Doctrines */}
+          <section id="doctrine" className="py-6 border-t border-[#2d3038] space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium text-[#eab444]">Engineering Manifesto</p>
+                <h2 className="mt-1.5 text-2xl sm:text-3xl font-bold text-[#f3f7fe]">
+                  The Zero Doctrine
+                </h2>
+              </div>
+
               <button
                 type="button"
                 onClick={onToggleAudio}
-                className={`min-h-[42px] px-4 py-2 border font-mobilis text-xs inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`min-h-[42px] px-4 py-2 border text-[13px] font-medium inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
                   audioEnabled
-                    ? 'border-[#eab444] bg-[#171b21] text-[#eab444]'
-                    : 'border-[#2d3038] bg-[#0a0d13] text-[#9498a1] hover:text-[#f3f7fe]'
+                    ? 'border-[#eab444] bg-[#eab444] text-[#04060b] font-bold'
+                    : 'border-[#2d3038] bg-[#0a0d13] text-[#f3f7fe]'
                 }`}
               >
                 {audioEnabled ? (
-                  <Volume2 className="w-3.5 h-3.5" aria-hidden="true" />
+                  <Volume2 className="w-4 h-4" aria-hidden="true" />
                 ) : (
-                  <VolumeX className="w-3.5 h-3.5" aria-hidden="true" />
+                  <VolumeX className="w-4 h-4 text-[#eab444]" aria-hidden="true" />
                 )}
-                Haptic Audio: {audioEnabled ? 'On' : 'Off'}
+                {audioEnabled ? 'Sound Feedback Active' : 'Enable Sound Feedback'}
               </button>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 border border-[#2d3038] bg-[#0a0d13] divide-y lg:divide-y-0 lg:divide-x divide-[#2d3038]">
+              {ZERO_DOCTRINES.map((item) => (
+                <div key={item.index} className="p-5 flex flex-col justify-between gap-4">
+                  <div>
+                    <div className="font-mobilis text-xs font-bold text-[#eab444]">{item.index}</div>
+                    <h3 className="text-base font-bold text-[#f3f7fe] mt-2">{item.title}</h3>
+                    <p className="text-[14px] text-[#d2d7e2] mt-2 leading-[1.6]">{item.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // STAGE 2 · THE MOVIE-LIKE DISNEYLAND RIDE (Scenes 01 -> 11)
+  // ZERO locked buttons, ZERO future spoilers, pure cinematic scene flow
+  // =========================================================================
+  return (
+    <div className="min-h-screen bg-[#04060b] text-[#f3f7fe] relative flex flex-col justify-between overflow-x-clip">
+      <AmbientRideCanvas schematic={currentRepo.schematic} paused={paused} />
+
+      {/* Minimalist Whisper Cinema Header — 3 clean zones, zero unclickable future items */}
+      <header className="sticky top-0 z-30 bg-[#04060b]/96 border-b border-[#2d3038]/80">
+        <div className="max-w-[1220px] mx-auto px-8 h-16 flex items-center justify-between gap-8">
+          <div className="inline-flex items-center gap-3 whitespace-nowrap shrink-0">
+            <SifrMark size={22} shift={shift} />
+            <span className="text-[15px] font-bold tracking-[0.06em] text-[#f3f7fe]">SIFR</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {ZERO_DOCTRINES.map((d) => (
-              <div key={d.index} className="border border-[#2d3038] bg-[#0a0d13] p-5 space-y-2">
-                <div className="font-mobilis text-xs text-[#eab444]">{d.index}.</div>
-                <h3 className="text-base font-bold text-[#f3f7fe]">{d.title}</h3>
-                <p className="text-xs text-[#9498a1] leading-relaxed">{d.body}</p>
-              </div>
-            ))}
+          <div className="flex items-center gap-3 text-[13px] text-[#9ca2af] whitespace-nowrap">
+            <span className="text-[#eab444] font-medium">
+              {currentAct.roman} · {currentAct.title}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="font-mobilis text-[#f3f7fe]">
+              Chapter {currentStory.stationNumber} of 11
+            </span>
           </div>
-        </section>
-      </main>
 
-      {/* Shell Identity Footer */}
-      <footer className="border-t border-[#2d3038] bg-[#04060b]">
-        <div className="max-w-[1180px] mx-auto px-8 py-8 flex flex-wrap items-center justify-between gap-4">
-          <div className="font-mobilis text-sm text-[#f3f7fe] flex items-center gap-2">
-            <span>sifr@mobilis ~</span>
-            <span className="text-[#eab444]">❯</span>
-            <span className="inline-block w-2 h-4 bg-[#eab444]" aria-hidden="true" />
-            <span className="text-xs text-[#9498a1] ml-3">shift {shift}</span>
-          </div>
-          <div className="flex items-center gap-6 font-mobilis text-xs text-[#9498a1]">
-            <a
-              href="https://github.com/mohamedsalahi"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-[#eab444]"
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                haptics.trigger('tap');
+                onOpenShowreel();
+              }}
+              className="min-h-[38px] px-3.5 border border-[#2d3038] bg-[#0a0d13] hover:border-[#eab444] text-[13px] font-medium text-[#d2d7e2] inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
             >
-              github.com/mohamedsalahi
-            </a>
-            <span>Argos Security</span>
+              <Play className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
+              Film
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggleAudio}
+              aria-label={audioEnabled ? 'Mute haptic audio' : 'Enable haptic audio'}
+              className={`min-h-[38px] min-w-[38px] px-3 border flex items-center justify-center transition-colors cursor-pointer ${
+                audioEnabled
+                  ? 'border-[#eab444] text-[#eab444] bg-[#171b21]'
+                  : 'border-[#2d3038] text-[#9ca2af] bg-[#0a0d13] hover:text-[#f3f7fe]'
+              }`}
+            >
+              {audioEnabled ? (
+                <Volume2 className="w-4 h-4" aria-hidden="true" />
+              ) : (
+                <VolumeX className="w-4 h-4" aria-hidden="true" />
+              )}
+            </button>
           </div>
         </div>
-      </footer>
+
+        {/* Hairline Filament Track Progress */}
+        <div className="h-[2px] w-full bg-[#171b21]">
+          <div
+            className="h-full bg-[#eab444] transition-all duration-500 ease-out"
+            style={{ width: `${Math.max(9, ((rideState.currentIndex + 1) / orderedRepos.length) * 100)}%` }}
+          />
+        </div>
+      </header>
+
+      {/* Brief Act Intertitle Curtain when crossing Acts */}
+      <AnimatePresence>
+        {actCurtain && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+            className="fixed inset-0 z-40 bg-[#04060b]/96 flex items-center justify-center pointer-events-none px-6"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 1.04 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="text-center space-y-3 max-w-xl"
+            >
+              <p className="text-sm font-medium tracking-[0.12em] uppercase text-[#eab444]">
+                {actCurtain.roman} · {actCurtain.title}
+              </p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-[#f3f7fe] text-balance">
+                {actCurtain.subtitle}
+              </h2>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Animated Full-Stage Scene Viewport */}
+      <main className="relative z-10 flex-1 w-full max-w-[1220px] mx-auto px-8 py-8 lg:py-10 flex flex-col justify-center">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.article
+            key={currentRepo.id}
+            custom={direction}
+            initial={{
+              opacity: 0,
+              y: direction * 22,
+              scale: 0.99,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+            }}
+            exit={{
+              opacity: 0,
+              y: direction * -18,
+              scale: 0.99,
+            }}
+            transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
+            aria-label={`Chapter ${currentStory.stationNumber}: ${currentRepo.name}`}
+            className="space-y-8"
+          >
+            {/* Primary Cinematic Two-Column Stage */}
+            <div className="grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-8 lg:gap-12 items-start">
+              {/* Left Column: Narrative Direction & Story Prose */}
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <div className="text-[13px] font-medium text-[#9ca2af] flex flex-wrap items-center gap-2.5">
+                    <span className="text-[#eab444]">Chapter {currentStory.stationNumber}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{currentRepo.primaryLanguage}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{formatRelativeDate(currentRepo.updatedAt)}</span>
+                  </div>
+
+                  <h1 className="text-3xl sm:text-[42px] font-bold text-[#f3f7fe] leading-[1.08] tracking-[-0.025em] text-balance">
+                    {currentStory.chapterTitle}
+                  </h1>
+
+                  <p className="text-[15px] font-medium text-[#eab444]">
+                    {currentRepo.name} — {currentRepo.subtitle}
+                  </p>
+                </div>
+
+                {/* High-Legibility Narrative Copy */}
+                <div className="space-y-4">
+                  <p className="text-[16px] sm:text-[17px] text-[#f3f7fe] leading-[1.65]">
+                    {currentStory.openingHook}
+                  </p>
+                  <p className="text-[15px] text-[#d2d7e2] leading-[1.7]">
+                    {currentStory.engineeringNarrative}
+                  </p>
+                </div>
+
+                {/* Breakthrough Callout (Clean All-Around Hairline Border) */}
+                <div className="border border-[#2d3038] bg-[#0a0d13]/90 p-5 space-y-1.5">
+                  <div className="text-xs font-bold text-[#eab444]">The Breakthrough</div>
+                  <p className="text-[14px] text-[#f3f7fe] leading-[1.65]">
+                    {currentStory.turningPoint}
+                  </p>
+                </div>
+
+                {/* Quiet External Source & Fullscreen Controls */}
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      haptics.trigger('tap');
+                      onOpenRepoModal(currentRepo);
+                    }}
+                    className="min-h-[42px] px-4 py-2 border border-[#2d3038] bg-[#0a0d13] hover:border-[#eab444] text-[13px] font-medium text-[#f3f7fe] inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
+                    Inspect Fullscreen
+                  </button>
+
+                  <a
+                    href={currentRepo.htmlUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => haptics.trigger('tap')}
+                    className="min-h-[42px] px-4 py-2 border border-[#2d3038] bg-[#0a0d13] hover:border-[#eab444] text-[13px] font-medium text-[#d2d7e2] hover:text-[#eab444] inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                  >
+                    Repository <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Right Column: Reactive Physics Schematic + Live Instrument Theater */}
+              <div className="border border-[#2d3038] bg-[#0a0d13]/95 chamfer overflow-hidden flex flex-col">
+                <div>
+                  <ProjectPhysicsIllustration schematic={currentRepo.schematic} heightClass="h-44" />
+                  <div className="px-5 py-3 border-b border-[#2d3038] bg-[#04060b] flex items-center justify-between gap-4 text-[13px]">
+                    <span className="text-[#9ca2af] shrink-0 whitespace-nowrap">Verified Proof</span>
+                    <span className="font-mobilis text-xs font-bold text-[#eab444] text-right">
+                      {currentRepo.proofMetric}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Scene Lens Switcher */}
+                <div className="px-5 pt-4 flex items-center gap-2 border-b border-[#2d3038] pb-3" role="tablist" aria-label="Chapter inspection lens">
+                  {(
+                    [
+                      { key: 'simulation', label: 'Live Simulation' },
+                      { key: 'story-readme', label: 'Repo README.md' },
+                      { key: 'architecture', label: 'Architecture & Code' },
+                    ] as const
+                  ).map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={stationTab === item.key}
+                      onClick={() => {
+                        haptics.trigger('detent');
+                        setStationTab(item.key);
+                      }}
+                      className={`min-h-[38px] px-3.5 py-1.5 text-[13px] font-medium border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                        stationTab === item.key
+                          ? 'border-[#eab444] bg-[#eab444] text-[#04060b] font-bold'
+                          : 'border-[#2d3038] bg-[#04060b] text-[#d2d7e2] hover:border-[#eab444]'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Active Lens Stage */}
+                <div className="p-5">
+                  {stationTab === 'simulation' && <InteractiveRepoDemo repo={currentRepo} />}
+
+                  {stationTab === 'story-readme' && (
+                    <ReadmeShowcase repoName={currentRepo.name} story={currentStory} />
+                  )}
+
+                  {stationTab === 'architecture' && (
+                    <div className="space-y-5">
+                      <div className="divide-y divide-[#2d3038]">
+                        {currentRepo.highlights.map((h) => (
+                          <div key={h.label} className="py-2.5 flex items-baseline justify-between gap-4">
+                            <span className="text-[13px] text-[#9ca2af]">{h.label}</span>
+                            <span className="font-mobilis text-xs text-[#f3f7fe] text-right">
+                              {h.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <pre className="p-4 border border-[#2d3038] bg-[#04060b] font-mobilis text-xs text-[#d2d7e2] overflow-x-auto leading-[1.6]">
+                        {currentRepo.codeExcerpt}
+                      </pre>
+                      <p className="text-[14px] text-[#9ca2af] leading-[1.6]">
+                        {currentRepo.architectureNote}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Flow-Driven Story Bridge Footer */}
+            <div className="border-t border-[#2d3038] pt-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="flex items-center gap-4 shrink-0">
+                {prevRepo ? (
+                  <button
+                    type="button"
+                    onClick={handleStepBack}
+                    className="min-h-[44px] px-4 py-2 border border-[#2d3038] bg-[#0a0d13] hover:border-[#eab444] text-[13px] font-medium text-[#d2d7e2] hover:text-[#f3f7fe] inline-flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                    <span>{prevRepo.name}</span>
+                  </button>
+                ) : (
+                  <span className="text-[13px] text-[#9ca2af] whitespace-nowrap">
+                    Opening Chapter · Use Arrow keys or Continue
+                  </span>
+                )}
+              </div>
+
+              <p className="text-[14px] text-[#9ca2af] leading-relaxed max-w-xl lg:text-center">
+                {currentStory.bridgeToNext}
+              </p>
+
+              <button
+                type="button"
+                onClick={handleAdvance}
+                className="group min-h-[48px] px-7 py-3 bg-[#eab444] hover:bg-[#f2c15c] text-[#04060b] text-[14px] font-bold inline-flex items-center justify-center gap-2.5 whitespace-nowrap shrink-0 transition-all cursor-pointer chamfer-sm"
+              >
+                <span>
+                  {nextRepo ? `Continue · ${nextRepo.name}` : 'Enter the Grand Exit'}
+                </span>
+                <ArrowRight
+                  className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1"
+                  aria-hidden="true"
+                />
+              </button>
+            </div>
+          </motion.article>
+        </AnimatePresence>
+      </main>
     </div>
   );
 }

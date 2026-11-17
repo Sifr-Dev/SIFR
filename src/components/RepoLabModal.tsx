@@ -1,8 +1,11 @@
-import { useEffect } from 'react';
-import { X, ArrowUpRight, Terminal } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, ArrowUpRight, Terminal, BookOpen } from 'lucide-react';
 import type { RepoSpec } from '../data/repos';
+import { getStoryForRepo } from '../data/stories';
+import { getActForRepoId } from '../lib/narrative';
 import { ProjectPhysicsIllustration } from './ProjectPhysicsIllustration';
 import { InteractiveRepoDemo } from './InteractiveDemos';
+import { ReadmeShowcase } from './ReadmeShowcase';
 import { haptics } from '../lib/haptics';
 import { formatRelativeDate } from '../lib/githubStats';
 
@@ -11,6 +14,8 @@ interface RepoLabModalProps {
   onClose: () => void;
   onSelectRepo: (repo: RepoSpec) => void;
   allRepos: RepoSpec[];
+  maxUnlockedIndex?: number;
+  hasExited?: boolean;
 }
 
 export function RepoLabModal({
@@ -18,7 +23,15 @@ export function RepoLabModal({
   onClose,
   onSelectRepo,
   allRepos,
+  maxUnlockedIndex = 10,
+  hasExited = true,
 }: RepoLabModalProps) {
+  const [viewMode, setViewMode] = useState<'demo' | 'readme'>('demo');
+
+  useEffect(() => {
+    setViewMode('demo');
+  }, [repo?.id]);
+
   useEffect(() => {
     if (!repo) return;
     const onKey = (e: KeyboardEvent) => {
@@ -32,6 +45,10 @@ export function RepoLabModal({
   }, [repo, onClose]);
 
   if (!repo) return null;
+
+  const story = getStoryForRepo(repo.id);
+  const act = getActForRepoId(repo.id);
+  const visitedRepos = allRepos.filter((_, idx) => hasExited || idx <= maxUnlockedIndex);
 
   return (
     <div
@@ -50,15 +67,17 @@ export function RepoLabModal({
         {/* Top Modal Header */}
         <div className="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-[#2d3038] bg-[#04060b]">
           <div className="min-w-0">
-            <div className="font-mobilis text-[11px] uppercase tracking-[0.14em] text-[#9498a1] flex items-center gap-2">
-              <span>{repo.categoryLabel}</span>
+            <div className="text-xs font-medium text-[#9ca2af] flex items-center gap-2">
+              <span className="text-[#eab444]">
+                Chapter {story.stationNumber} · {act.roman}
+              </span>
               <span aria-hidden="true">·</span>
               <span>{repo.primaryLanguage}</span>
               <span aria-hidden="true">·</span>
               <span>Updated {formatRelativeDate(repo.updatedAt)}</span>
             </div>
-            <h2 id="repo-lab-title" className="text-lg sm:text-2xl font-bold text-[#f3f7fe] mt-1 truncate">
-              {repo.name} — {repo.subtitle}
+            <h2 id="repo-lab-title" className="text-xl sm:text-2xl font-bold text-[#f3f7fe] mt-1 truncate">
+              {repo.name} — {story.chapterTitle}
             </h2>
           </div>
 
@@ -68,7 +87,7 @@ export function RepoLabModal({
               target="_blank"
               rel="noreferrer"
               onClick={() => haptics.trigger('tap')}
-              className="min-h-[40px] px-4 py-2 bg-[#eab444] text-[#04060b] font-mobilis text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+              className="min-h-[40px] px-4 py-2 bg-[#eab444] text-[#04060b] text-[13px] font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
               Source <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
             </a>
@@ -88,38 +107,68 @@ export function RepoLabModal({
 
         {/* Scrollable Content */}
         <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
-          {/* Interactive Live Demo Stage — primary above-the-fold focus */}
-          <div className="border border-[#2d3038] bg-[#0a0d13] p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2 font-mobilis text-xs uppercase tracking-[0.14em] text-[#eab444] mb-4">
+          <div className="border border-[#2d3038] bg-[#0a0d13] p-4 sm:p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Terminal className="w-4 h-4" aria-hidden="true" />
-                <span>Interactive Engineering Demo · {repo.name}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.trigger('detent');
+                    setViewMode('demo');
+                  }}
+                  className={`min-h-[38px] px-3.5 py-1.5 text-[13px] font-medium border inline-flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'demo'
+                      ? 'border-[#eab444] bg-[#eab444] text-[#04060b] font-bold'
+                      : 'border-[#2d3038] bg-[#04060b] text-[#d2d7e2]'
+                  }`}
+                >
+                  <Terminal className="w-3.5 h-3.5" aria-hidden="true" />
+                  Live Simulation
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.trigger('detent');
+                    setViewMode('readme');
+                  }}
+                  className={`min-h-[38px] px-3.5 py-1.5 text-[13px] font-medium border inline-flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'readme'
+                      ? 'border-[#eab444] bg-[#eab444] text-[#04060b] font-bold'
+                      : 'border-[#2d3038] bg-[#04060b] text-[#d2d7e2]'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5" aria-hidden="true" />
+                  Story &amp; README.md
+                </button>
               </div>
-              <span className="text-[11px] text-[#9498a1] normal-case tracking-normal">
-                {repo.proofMetric}
-              </span>
+              <span className="font-mobilis text-xs text-[#9ca2af]">{repo.proofMetric}</span>
             </div>
-            <InteractiveRepoDemo repo={repo} />
+
+            {viewMode === 'demo' ? (
+              <InteractiveRepoDemo repo={repo} />
+            ) : (
+              <ReadmeShowcase repoName={repo.name} story={story} />
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-5 items-stretch">
             <div className="border border-[#2d3038] bg-[#04060b] flex flex-col">
               <ProjectPhysicsIllustration schematic={repo.schematic} heightClass="h-40" />
               <div className="p-5 space-y-3 flex-1">
-                <p className="text-sm text-[#f3f7fe] leading-relaxed">{repo.summary}</p>
-                <p className="text-xs text-[#9498a1] leading-relaxed">{repo.architectureNote}</p>
+                <p className="text-[15px] text-[#f3f7fe] leading-[1.6]">{story.openingHook}</p>
+                <p className="text-[14px] text-[#d2d7e2] leading-[1.6]">{story.turningPoint}</p>
               </div>
             </div>
 
             <div className="border border-[#2d3038] bg-[#04060b] p-5 flex flex-col justify-between space-y-4">
               <div>
-                <div className="font-mobilis text-[11px] uppercase tracking-[0.14em] text-[#9498a1] mb-3">
-                  Verified Architecture Highlights
+                <div className="text-xs font-bold text-[#9ca2af] mb-3">
+                  Architecture Highlights
                 </div>
                 <div className="divide-y divide-[#2d3038]">
                   {repo.highlights.map((h) => (
                     <div key={h.label} className="py-2 flex items-baseline justify-between gap-3">
-                      <span className="font-mobilis text-xs text-[#9498a1]">{h.label}</span>
+                      <span className="text-[13px] text-[#9ca2af]">{h.label}</span>
                       <span className="font-mobilis text-xs text-[#f3f7fe] text-right">{h.value}</span>
                     </div>
                   ))}
@@ -127,44 +176,42 @@ export function RepoLabModal({
               </div>
 
               <div>
-                <div className="font-mobilis text-[11px] uppercase tracking-[0.14em] text-[#9498a1] mb-2">
-                  Stack
-                </div>
-                <div className="font-mobilis text-xs text-[#b9bec7]">
-                  {repo.stack.join(' · ')}
-                </div>
+                <div className="text-xs font-bold text-[#9ca2af] mb-2">Stack</div>
+                <div className="text-[13px] text-[#d2d7e2]">{repo.stack.join(' · ')}</div>
               </div>
 
-              <pre className="p-3 border-l-2 border-[#eab444] bg-[#171b21] font-mobilis text-[11px] text-[#b9bec7] overflow-x-auto">
+              <pre className="p-3 border border-[#2d3038] bg-[#171b21] font-mobilis text-xs text-[#d2d7e2] overflow-x-auto">
                 {repo.codeExcerpt}
               </pre>
             </div>
           </div>
         </div>
 
-        {/* Bottom Switcher Bar */}
-        <div className="px-5 sm:px-6 py-3 border-t border-[#2d3038] bg-[#04060b] flex items-center gap-1.5 overflow-x-auto sm:overflow-visible sm:flex-wrap no-scrollbar">
-          <span className="font-mobilis text-[11px] uppercase tracking-wider text-[#9498a1] whitespace-nowrap shrink-0 mr-1.5">
-            Switch Repo:
-          </span>
-          {allRepos.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => {
-                haptics.trigger('detent');
-                onSelectRepo(item);
-              }}
-              className={`min-h-[30px] px-2.5 py-1 font-mobilis text-[11px] border whitespace-nowrap shrink-0 cursor-pointer ${
-                item.id === repo.id
-                  ? 'border-[#eab444] bg-[#eab444] text-[#04060b] font-bold'
-                  : 'border-[#2d3038] bg-[#0a0d13] text-[#9498a1] hover:text-[#f3f7fe]'
-              }`}
-            >
-              {item.name}
-            </button>
-          ))}
-        </div>
+        {/* Bottom Switcher Bar (shows only chapters already visited — never locked buttons) */}
+        {visitedRepos.length > 1 && (
+          <div className="px-5 sm:px-6 py-3 border-t border-[#2d3038] bg-[#04060b] flex items-center gap-1.5 overflow-x-auto sm:overflow-visible sm:flex-wrap no-scrollbar">
+            <span className="text-xs text-[#9ca2af] whitespace-nowrap shrink-0 mr-2">
+              {hasExited ? 'All Chapters:' : 'Visited Chapters:'}
+            </span>
+            {visitedRepos.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  haptics.trigger('detent');
+                  onSelectRepo(item);
+                }}
+                className={`min-h-[32px] px-2.5 py-1 text-xs font-medium border whitespace-nowrap shrink-0 cursor-pointer ${
+                  item.id === repo.id
+                    ? 'border-[#eab444] bg-[#eab444] text-[#04060b] font-bold'
+                    : 'border-[#2d3038] bg-[#0a0d13] text-[#d2d7e2] hover:border-[#eab444]'
+                }`}
+              >
+                {item.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

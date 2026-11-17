@@ -1202,31 +1202,36 @@ function MallocAllocatorDemo() {
               Heap empty (head == NULL). Call my_malloc() or my_calloc() to invoke sbrk().
             </div>
           ) : (
-            heap.blocks.map((b) => (
-              <button
-                key={`${b.id}-${b.headerOffset}`}
-                type="button"
-                disabled={b.free}
-                onClick={() => {
-                  if (!b.free) {
+            heap.blocks.map((b) =>
+              b.free ? (
+                <div
+                  key={`${b.id}-${b.headerOffset}`}
+                  className="min-h-[54px] px-3 py-2 border border-[#2d3038] bg-[#0a0d13] text-[#9ca2af] text-left font-mobilis text-[11px] flex-1 min-w-[120px]"
+                >
+                  <div className="font-bold">FREE</div>
+                  <div>
+                    {MALLOC_HEADER_SIZE}B hdr + {b.size}B
+                  </div>
+                </div>
+              ) : (
+                <button
+                  key={`${b.id}-${b.headerOffset}`}
+                  type="button"
+                  onClick={() => {
                     haptics.trigger('detent');
                     setHeap((h) => freeBlock(h, b.id));
-                  }
-                }}
-                className={`min-h-[54px] px-3 py-2 border text-left font-mobilis text-[11px] transition-colors flex-1 min-w-[120px] ${
-                  b.free
-                    ? 'border-[#2d3038] bg-[#0a0d13] text-[#9498a1] cursor-default'
-                    : 'border-[#eab444] bg-[#171b21] text-[#f3f7fe] hover:bg-[#eab444] hover:text-[#04060b] cursor-pointer'
-                }`}
-              >
-                <div className="font-bold">
-                  {b.free ? 'FREE' : b.label} {b.zeroed ? '(0x00)' : ''}
-                </div>
-                <div>
-                  {MALLOC_HEADER_SIZE}B hdr + {b.size}B
-                </div>
-              </button>
-            ))
+                  }}
+                  className="min-h-[54px] px-3 py-2 border border-[#eab444] bg-[#171b21] text-[#f3f7fe] hover:bg-[#eab444] hover:text-[#04060b] cursor-pointer text-left font-mobilis text-[11px] transition-colors flex-1 min-w-[120px]"
+                >
+                  <div className="font-bold">
+                    {b.label} {b.zeroed ? '(0x00)' : ''}
+                  </div>
+                  <div>
+                    {MALLOC_HEADER_SIZE}B hdr + {b.size}B
+                  </div>
+                </button>
+              )
+            )
           )}
         </div>
 
