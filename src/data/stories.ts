@@ -509,7 +509,7 @@ When the first Vulkan compute output buffer copied cleanly on Wayland yet render
     turningPoint:
       'Proving the LFSR-generated Keccak-f[1600] round constants against NIST Known Answer Tests and verifying 27 post-quantum crypto tests plus full workspace integration (31/31 passing under cargo test) delivered a complete sovereign trust root built 100% from zero.',
     bridgeToNext:
-      'Station 11 completes the architectural ascent—from a single 24-byte C allocator header to a post-quantum peer-to-peer OS. Step forward through the Grand Exit to inspect live GitHub telemetry and the Five Zero Doctrines.',
+      'With post-quantum systems architecture verified end to end, one final chapter turns the lens inward: SIFR itself—the 24-cell cipher canvas, spring physics engine, and zero-template exhibition carrying all twelve repositories.',
     readmeFilename: 'README.md',
     readmeSections: [
       {
@@ -523,7 +523,7 @@ When the first Vulkan compute output buffer copied cleanly on Wayland yet render
     ],
     readmeMarkdown: `# verrev — Vertically Integrated Post-Quantum Peer-to-Peer OS
 
-> **Station 11 · Act IV (Built From Zero · Grand Capstone)**  
+> **Station 11 · Act IV (Built From Zero)**  
 > *"Zero external crates beyond Rust + LLVM. From syscall shims to post-quantum mesh routing."*
 
 ## The Story
@@ -537,22 +537,63 @@ Most distributed systems glue together dozens of unaudited third-party dependenc
 | **L2–4 · Data & Mesh** | \`verrev-store\`, \`verrev-p2p\` (256 KBuckets), \`verrev-db\` | \`cargo test -- --test-threads=1\` (31/31 pass) |
 `,
   },
+
+  SIFR: {
+    repoId: 'SIFR',
+    stationNumber: '12',
+    chapterTitle: 'The Living Canvas: SIFR Built From Zero',
+    tagline: 'Chapter 12 · 24-Cell Alberti Cipher Physics & Cinema Architecture',
+    openingHook:
+      'Closing Act IV, Chapter 12 steps inside the very instrument you are navigating—an original TypeScript and 2D physics architecture rejecting generic templates and locking all twelve repositories into one unbroken story.',
+    engineeringNarrative:
+      'SIFR combines a custom 24-cell radial Alberti cipher wheel snapping at crisp 15-degree spring detents, gravitational particle fields bending dynamically under pointer velocity, synthesized Web Audio tactile clicks, live GitHub REST telemetry, and dual bespoke stages tailored for desktop cinema and native mobile thumbs.',
+    turningPoint:
+      'Replacing static portfolio cards with a continuous directed journey—a reactive Framer Motion grand entrance, live executable hardware/kernel simulations per chapter, and dynamic GitHub REST synchronization—turned passive browsing into an experiential exhibition.',
+    bridgeToNext:
+      'Chapter 12 completes the twelve-station ascent—from a single 24-byte C allocator header to the SIFR exhibition canvas itself. Step through the Grand Exit to inspect live GitHub telemetry and revisit any work freely.',
+    readmeFilename: 'README.md',
+    readmeSections: [
+      {
+        heading: '24-Cell Alberti Cipher & Spring Detent Engine',
+        body: 'Pure angular spring solver (stepAngularSpring) snaps across 24 radial bit cells (15 deg detents), locking into SIFR alignment at shift zero.',
+      },
+      {
+        heading: 'Twelve Live Interactive Labs + GitHub REST Sync',
+        body: 'Synchronizes repository metadata, pushed timestamps, language byte trees, and recent push activity live against github.com/mohamedsalahi.',
+      },
+    ],
+    readmeMarkdown: `# SIFR — Interactive 24-Cell Cipher Canvas & Systems Exhibition
+
+> **Station 12 · Act IV (Built From Zero · Grand Capstone)**  
+> *"One entrance, one canonical track, zero borrowed scaffolding."*
+
+## The Story
+\`SIFR\` (zero / صفر) unifies visual brand identity, mathematical cryptography, 2D pointer-reactive physics, synthesized Web Audio feedback, and twelve live systems engineering sandboxes into a single coherent experience.
+
+## Architectural Pillars
+- **Sequenced Grand Entrance**: Framer Motion + reactive 76-node orbital gravitational field triggering automatically on load.
+- **24-Cell Cipher Core**: Bijective 15° detent cipher mapping (\`decodeRingAtShift(0) -> "SIFR····"\`).
+- **Live GitHub Sync**: Merges live \`pushed_at\` timestamps, language distributions, and public events directly from \`api.github.com/users/mohamedsalahi\`.
+`,
+  },
 };
 
 export function getStoryForRepo(repoId: string): RepoStorySpec {
-  return (
-    REPO_STORIES[repoId] ?? {
-      repoId,
-      stationNumber: '00',
-      chapterTitle: repoId,
-      tagline: repoId,
-      openingHook: '',
-      engineeringNarrative: '',
-      turningPoint: '',
-      bridgeToNext: '',
-      readmeFilename: 'README.md',
-      readmeSections: [],
-      readmeMarkdown: `# ${repoId}\n`,
-    }
-  );
+  const direct = REPO_STORIES[repoId];
+  if (direct) return direct;
+  const ci = Object.values(REPO_STORIES).find((s) => s.repoId.toLowerCase() === repoId.toLowerCase());
+  if (ci) return ci;
+  return {
+    repoId,
+    stationNumber: '13',
+    chapterTitle: `${repoId} · Live Repository`,
+    tagline: `Chapter 13 · Synchronized from github.com/mohamedsalahi/${repoId}`,
+    openingHook: `${repoId} is newly published on github.com/mohamedsalahi and automatically integrated into the SIFR exhibition sequence.`,
+    engineeringNarrative: `Synced directly via the GitHub REST API with live repository metadata, primary language breakdown, and architecture summary.`,
+    turningPoint: `Dynamic GitHub discovery keeps the exhibition continuously aligned with every new repository pushed upstream.`,
+    bridgeToNext: `Explore the live metadata and architecture before continuing to the Grand Exit.`,
+    readmeFilename: 'README.md',
+    readmeSections: [],
+    readmeMarkdown: `# ${repoId}\n\nSynchronized directly from [github.com/mohamedsalahi/${repoId}](https://github.com/mohamedsalahi/${repoId}).\n`,
+  };
 }

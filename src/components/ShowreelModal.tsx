@@ -24,7 +24,7 @@ export function ShowreelModal({ open, onClose }: ShowreelModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#04060b]/90 backdrop-blur-xs flex items-center justify-center p-4 sm:p-8"
+      className="fixed inset-0 z-50 bg-[#04060b]/96 flex items-center justify-center p-4 sm:p-8"
       role="dialog"
       aria-modal="true"
       aria-label="SIFR Brand Identity Motion Reel"
@@ -37,7 +37,7 @@ export function ShowreelModal({ open, onClose }: ShowreelModalProps) {
     >
       <div className="w-full max-w-4xl border border-[#2d3038] bg-[#0a0d13] chamfer overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-[#2d3038] bg-[#04060b]">
-          <span className="font-mobilis text-xs uppercase tracking-[0.14em] text-[#eab444]">
+          <span className="font-mobilis font-semibold text-xs uppercase tracking-[0.14em] text-[#eab444]">
             SIFR Intro Motion · 1920x1080
           </span>
           <button

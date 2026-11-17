@@ -24,17 +24,17 @@ export function GitHubTelemetrySection({
     <section id="activity" className="py-12 border-t border-[#2d3038]">
       <div className="flex flex-wrap items-baseline justify-between gap-4 mb-8">
         <div>
-          <p className="text-xs font-medium tracking-[0.06em] text-[#eab444]">
+          <p className="text-xs font-semibold tracking-[0.06em] text-[#eab444]">
             GitHub Archive · @{profile.login}
           </p>
           <h2 className="mt-2 text-2xl sm:text-3xl font-bold text-[#f3f7fe]">
             Public output &amp; engineering footprint.
           </h2>
         </div>
-        <div className="flex items-center gap-4 text-[13px] text-[#9ca2af]">
+        <div className="flex items-center gap-4 text-[13px] font-medium text-[#a6acb9]">
           <span>
             Source:{' '}
-            <span className="text-[#f3f7fe] font-medium">
+            <span className="text-[#f3f7fe] font-semibold">
               {syncSource === 'live' ? 'GitHub REST Live' : 'Verified Snapshot'}
             </span>
           </span>
@@ -43,7 +43,7 @@ export function GitHubTelemetrySection({
             target="_blank"
             rel="noreferrer"
             onClick={() => haptics.trigger('tap')}
-            className="inline-flex items-center gap-1 text-[#eab444] hover:underline whitespace-nowrap shrink-0 font-medium"
+            className="inline-flex items-center gap-1 text-[#eab444] hover:underline whitespace-nowrap shrink-0 font-semibold"
           >
             github.com/{profile.login} <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
           </a>
@@ -53,41 +53,41 @@ export function GitHubTelemetrySection({
       {/* Quantitative Footprint Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 border border-[#2d3038] bg-[#0a0d13] divide-y lg:divide-y-0 lg:divide-x divide-[#2d3038]">
         <div className="p-5">
-          <div className="text-xs font-medium text-[#9ca2af]">Public Repositories</div>
+          <div className="text-xs font-semibold text-[#a6acb9]">Public Repositories</div>
           <div className="font-mobilis text-2xl font-bold text-[#f3f7fe] mt-2">
             {profile.publicRepos}
           </div>
-          <div className="text-[13px] text-[#9ca2af] mt-1">
+          <div className="text-[13px] font-medium text-[#a6acb9] mt-1">
             {stats.categoryCounts.systems} systems · {stats.categoryCounts.ml} ml · {stats.categoryCounts.infra} infra
           </div>
         </div>
 
         <div className="p-5 border-l border-[#2d3038] lg:border-l-0">
-          <div className="text-xs font-medium text-[#9ca2af]">Indexed Code Volume</div>
+          <div className="text-xs font-semibold text-[#a6acb9]">Indexed Code Volume</div>
           <div className="font-mobilis text-2xl font-bold text-[#eab444] mt-2">
             {stats.totalKilobytes.toLocaleString()} KB
           </div>
-          <div className="text-[13px] text-[#9ca2af] mt-1">
+          <div className="text-[13px] font-medium text-[#a6acb9] mt-1">
             across {stats.languageShares.length} languages
           </div>
         </div>
 
         <div className="p-5">
-          <div className="text-xs font-medium text-[#9ca2af]">Primary Language</div>
+          <div className="text-xs font-semibold text-[#a6acb9]">Primary Language</div>
           <div className="text-2xl font-bold text-[#f3f7fe] mt-2">
             {stats.languageShares[0]?.language ?? 'Rust'}
           </div>
-          <div className="text-[13px] text-[#9ca2af] mt-1">
+          <div className="text-[13px] font-medium text-[#a6acb9] mt-1">
             {stats.languageShares[0]?.percent.toFixed(1)}% of codebase
           </div>
         </div>
 
         <div className="p-5 border-l border-[#2d3038] lg:border-l-0">
-          <div className="text-xs font-medium text-[#9ca2af]">Affiliation</div>
+          <div className="text-xs font-semibold text-[#a6acb9]">Affiliation</div>
           <div className="text-2xl font-bold text-[#f3f7fe] mt-2">
             {profile.company || 'Argos'}
           </div>
-          <div className="text-[13px] text-[#9ca2af] mt-1">
+          <div className="text-[13px] font-medium text-[#a6acb9] mt-1">
             {profile.followers} followers · {profile.following} following
           </div>
         </div>
@@ -104,10 +104,10 @@ export function GitHubTelemetrySection({
               {stats.languageShares.map((lang, idx) => (
                 <div key={lang.language} className="space-y-1.5">
                   <div className="flex items-center justify-between text-[13px]">
-                    <span className={idx === 0 ? 'text-[#eab444] font-bold' : 'text-[#f3f7fe] font-medium'}>
+                    <span className={idx === 0 ? 'text-[#eab444] font-bold' : 'text-[#f3f7fe] font-semibold'}>
                       {lang.language}
                     </span>
-                    <span className="font-mobilis text-xs text-[#9ca2af]">
+                    <span className="font-mobilis font-medium text-xs text-[#a6acb9]">
                       {Math.round(lang.bytes / 1024)} KB · {lang.percent.toFixed(1)}%
                     </span>
                   </div>
@@ -116,7 +116,7 @@ export function GitHubTelemetrySection({
                       className="h-full"
                       style={{
                         width: `${Math.max(3, lang.percent)}%`,
-                        backgroundColor: idx === 0 ? '#eab444' : idx === 1 ? '#f3f7fe' : '#9ca2af',
+                        backgroundColor: idx === 0 ? '#eab444' : idx === 1 ? '#f3f7fe' : '#a6acb9',
                       }}
                     />
                   </div>
@@ -125,7 +125,7 @@ export function GitHubTelemetrySection({
             </div>
           </div>
 
-          <p className="mt-6 pt-4 border-t border-[#2d3038] text-[13px] text-[#9ca2af]">
+          <p className="mt-6 pt-4 border-t border-[#2d3038] text-[13px] font-medium text-[#a6acb9]">
             Aggregated directly from GitHub language byte trees across all {stats.totalRepos} public repositories.
           </p>
         </div>
@@ -149,11 +149,11 @@ export function GitHubTelemetrySection({
                   <div className="text-[14px] font-bold text-[#eab444] truncate">
                     {item.repo}
                   </div>
-                  <div className="text-[13px] text-[#d2d7e2] mt-0.5 line-clamp-1">
+                  <div className="text-[13px] font-medium text-[#e4e8f1] mt-0.5 line-clamp-1">
                     {item.actionLabel}
                   </div>
                 </div>
-                <div className="font-mobilis text-xs text-[#9ca2af] whitespace-nowrap shrink-0">
+                <div className="font-mobilis font-medium text-xs text-[#a6acb9] whitespace-nowrap shrink-0">
                   {formatRelativeDate(item.createdAt)}
                 </div>
               </button>

@@ -120,6 +120,25 @@ export function ProjectPhysicsIllustration({
       const ptrOffsetX = ptr.active ? (ptr.x - cx) * 0.08 : 0;
       const ptrOffsetY = ptr.active ? (ptr.y - cy) * 0.08 : 0;
 
+      // Ethereal ambient spotlight behind center schematic
+      const focusX = ptr.active ? ptr.x * 0.35 + cx * 0.65 : cx;
+      const focusY = ptr.active ? ptr.y * 0.35 + cy * 0.65 : cy;
+      const bloom = ctx.createRadialGradient(focusX, focusY, 4, focusX, focusY, Math.max(width, height) * 0.55);
+      bloom.addColorStop(0, ptr.active ? 'rgba(234, 180, 68, 0.11)' : 'rgba(234, 180, 68, 0.055)');
+      bloom.addColorStop(1, 'rgba(4, 6, 11, 0)');
+      ctx.fillStyle = bloom;
+      ctx.fillRect(0, 0, width, height);
+
+      // Click pulse expanding ripple ring
+      if (ptr.pulse > 0.02) {
+        const ringR = (1 - ptr.pulse) * 90 + 10;
+        ctx.strokeStyle = `rgba(234, 180, 68, ${(ptr.pulse * 0.55).toFixed(2)})`;
+        ctx.lineWidth = 1.25;
+        ctx.beginPath();
+        ctx.arc(ptr.x || cx, ptr.y || cy, ringR, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
       if (schematic === 'verrev-mesh') {
         ctx.strokeStyle = 'rgba(185, 190, 199, 0.24)';
         for (let i = 0; i < nodes.length; i++) {
@@ -137,17 +156,19 @@ export function ProjectPhysicsIllustration({
           ctx.fillStyle = idx % 5 === 0 ? '#eab444' : '#f3f7fe';
           ctx.fillRect(n.x - 2.5, n.y - 2.5, 5, 5);
         });
-      } else if (schematic === 'wayland-ring') {
-        const r = Math.min(width, height) * 0.32;
+      } else if (schematic === 'wayland-ring' || schematic === 'sifr-cipher') {
+        const r = Math.min(width, height) * 0.34;
         const rx = cx + ptrOffsetX * 1.4;
         const ry = cy + ptrOffsetY * 1.4;
-        ctx.strokeStyle = 'rgba(45, 48, 56, 0.9)';
-        ctx.strokeRect(rx - r * 1.35, ry - r * 1.15, r * 2.7, r * 2.3);
+        if (schematic === 'wayland-ring') {
+          ctx.strokeStyle = 'rgba(45, 48, 56, 0.9)';
+          ctx.strokeRect(rx - r * 1.35, ry - r * 1.15, r * 2.7, r * 2.3);
+        }
         const stepOffset = ptr.active ? Math.floor(((ptr.x / width) * 24) % 24) : 0;
         for (let i = 0; i < 24; i++) {
           const a = ((-90 + i * 15) * Math.PI) / 180;
           const isKey = i === stepOffset;
-          const len = i % 3 === 0 ? 11 : 6;
+          const len = i % 3 === 0 ? 12 : 6;
           ctx.strokeStyle = isKey ? '#eab444' : '#f3f7fe';
           ctx.lineWidth = isKey ? 3 : 1.5;
           ctx.beginPath();
@@ -157,7 +178,7 @@ export function ProjectPhysicsIllustration({
         }
         ctx.fillStyle = '#eab444';
         ctx.beginPath();
-        ctx.arc(rx, ry, 4, 0, Math.PI * 2);
+        ctx.arc(rx, ry, 4.5, 0, Math.PI * 2);
         ctx.fill();
       } else if (schematic === 'ml-tensor') {
         const cols = 6;
@@ -275,6 +296,18 @@ export function ProjectPhysicsIllustration({
         });
       }
 
+      // Subtle corner coordinate notches
+      ctx.strokeStyle = 'rgba(234, 180, 68, 0.32)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(8, 16);
+      ctx.lineTo(8, 8);
+      ctx.lineTo(16, 8);
+      ctx.moveTo(width - 16, height - 8);
+      ctx.lineTo(width - 8, height - 8);
+      ctx.lineTo(width - 8, height - 16);
+      ctx.stroke();
+
       ctx.restore();
 
       const shouldContinue = !prefersReduced && (ptr.active || ptr.pulse > 0.01 || maxKinetic > 0.35);
@@ -340,11 +373,19 @@ export function ProjectPhysicsIllustration({
         wakeRef.current?.();
         haptics.trigger('detent');
       }}
+      onPointerUp={() => {
+        pointerRef.current.active = false;
+        wakeRef.current?.();
+      }}
       onPointerLeave={() => {
         pointerRef.current.active = false;
         wakeRef.current?.();
       }}
-      className={`w-full ${heightClass} block bg-[#04060b] border-b border-[#2d3038] cursor-crosshair`}
+      onPointerCancel={() => {
+        pointerRef.current.active = false;
+        wakeRef.current?.();
+      }}
+      className={`w-full ${heightClass} block bg-[#04060b] border-b border-[#2d3038] cursor-crosshair touch-none`}
       aria-hidden="true"
     />
   );

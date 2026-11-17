@@ -45,6 +45,14 @@ export function AmbientRideCanvas({ schematic, paused = false }: AmbientRideCanv
     let smoothNy = 0;
     let prev = performance.now();
 
+    const motes = Array.from({ length: 28 }, (_, i) => ({
+      angle: (i / 28) * Math.PI * 2,
+      radiusFrac: 0.16 + ((i * 29) % 100) / 150,
+      speed: (i % 2 === 0 ? 1 : -1) * (0.015 + (i % 5) * 0.005),
+      size: i % 4 === 0 ? 2.2 : 1.3,
+      brass: i % 3 === 0,
+    }));
+
     const draw = (now: number) => {
       if (pausedRef.current) {
         running = false;
@@ -66,14 +74,25 @@ export function AmbientRideCanvas({ schematic, paused = false }: AmbientRideCanv
       const cx = width * 0.52 + smoothNx * 28;
       const cy = height * 0.48 + smoothNy * 20;
 
-      const glow = ctx.createRadialGradient(cx, cy, 12, cx, cy, Math.max(width, height) * 0.55);
-      glow.addColorStop(0, 'rgba(234, 180, 68, 0.045)');
-      glow.addColorStop(0.6, 'rgba(23, 27, 33, 0.02)');
+      const glow = ctx.createRadialGradient(cx, cy, 12, cx, cy, Math.max(width, height) * 0.58);
+      glow.addColorStop(0, 'rgba(234, 180, 68, 0.06)');
+      glow.addColorStop(0.55, 'rgba(23, 27, 33, 0.025)');
       glow.addColorStop(1, 'rgba(4, 6, 11, 0)');
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, width, height);
 
-      ctx.strokeStyle = 'rgba(234, 180, 68, 0.08)';
+      // Floating drifting celestial motes
+      const maxSpan = Math.max(width, height) * 0.58;
+      for (const m of motes) {
+        const a = m.angle + t * m.speed + smoothNx * 0.08;
+        const dist = m.radiusFrac * maxSpan;
+        const mx = cx + Math.cos(a) * dist;
+        const my = cy + Math.sin(a) * dist;
+        ctx.fillStyle = m.brass ? 'rgba(234, 180, 68, 0.28)' : 'rgba(243, 247, 254, 0.16)';
+        ctx.fillRect(mx - m.size * 0.5, my - m.size * 0.5, m.size, m.size);
+      }
+
+      ctx.strokeStyle = 'rgba(234, 180, 68, 0.085)';
       ctx.lineWidth = 1;
 
       if (schematic === 'godb-hex' || schematic === 'verrev-mesh') {
@@ -89,7 +108,11 @@ export function AmbientRideCanvas({ schematic, paused = false }: AmbientRideCanv
           }
           ctx.stroke();
         });
-      } else if (schematic === 'wayland-ring' || schematic === 'greenlens-cnn') {
+      } else if (
+        schematic === 'wayland-ring' ||
+        schematic === 'greenlens-cnn' ||
+        schematic === 'sifr-cipher'
+      ) {
         for (let i = 0; i < 24; i++) {
           const a = (i / 24) * Math.PI * 2 + t * 0.05;
           ctx.beginPath();

@@ -11,7 +11,8 @@ export type SchematicKind =
   | 'redis-kv'
   | 'sysmon-proc'
   | 'churn-sigmoid'
-  | 'task-queue';
+  | 'task-queue'
+  | 'sifr-cipher';
 
 export interface RepoSpec {
   id: string;
@@ -60,12 +61,12 @@ export interface GitHubProfileSnapshot {
 export const INITIAL_PROFILE: GitHubProfileSnapshot = {
   login: 'mohamedsalahi',
   name: 'SIFR-dev',
-  bio: 'Aspiring systems and machine learning engineer with a standard that does not accept compromises. Head engineer, tech lead, and co-founder of Argos Security.',
+  bio: 'Aspiring systems and machine learning engineer with a standard that does not accept compromises. Head engineer, tech lead and co-founder of @Argos-Security.',
   company: 'Argos',
   blog: 'https://mohamedsalahi.vercel.app/',
   htmlUrl: 'https://github.com/mohamedsalahi',
   avatarUrl: '/brand/png/avatar-400.png',
-  publicRepos: 11,
+  publicRepos: 12,
   followers: 5,
   following: 4,
 };
@@ -125,8 +126,8 @@ pub fn derive_identity(dilithium_pk: &[u8]) -> [u8; 32] {
     stack: ['Zig', 'Wayland Wire', 'Vulkan Compute', 'SPIR-V', 'xkb', 'Linux SHM'],
     schematic: 'wayland-ring',
     codeExcerpt: `// src/wayland.zig · hand-marshaled wire frame
-// wl_display -> wl_registry -> xdg_toplevel -> wl_shm (memfd + SCM_RIGHTS)
-// ring.comp GPU compute rasterizer -> WAYLAND_PROTOCOL_OK frames=24`,
+// wl_display -> xdg_toplevel -> wl_shm (memfd)
+// ring.comp compute raster -> WAYLAND_PROTOCOL_OK`,
     highlights: [
       { label: 'Compositor', value: 'Handwritten Wayland wire client' },
       { label: 'GPU Driver', value: 'NVIDIA RTX 4060 ICD · libvulkan.so.1' },
@@ -154,8 +155,9 @@ pub fn derive_identity(dilithium_pk: &[u8]) -> [u8; 32] {
       'Zero narrative assertions—every RMSNorm & FlashAttention kernel claim is gated behind 36 pytest fp32/fp16/bf16 parity tests and zero-copy DLPack cross-framework benchmarking.',
     stack: ['Python', 'Triton', 'PyTorch', 'JAX / XLA', 'CUDA', 'DLPack'],
     schematic: 'ml-tensor',
-    codeExcerpt: `# bench.compare_rmsnorm (4096x4096 fp16) & bench.compare_attention (4x16x1024x64)
-# RMSNorm JAX XLA: 0.147 ms (22.8x) | Attention Triton: 0.617 ms (causal 0.632 ms)`,
+    codeExcerpt: `# RMSNorm (4096x4096 fp16) & SDPA (4x16x1024x64)
+# RMSNorm JAX XLA : 0.147 ms (22.8x vs PyTorch)
+# Triton SDPA     : 0.617 ms (causal 0.632 ms)`,
     highlights: [
       { label: 'RMSNorm 4096×4096 fp16', value: '3.360 ms -> 0.147 ms (22.8x)' },
       { label: 'FlashAttn 4×16×1024×64', value: '9.25 ms -> 0.617 ms Triton / 0.372 ms SDPA' },
@@ -183,9 +185,9 @@ pub fn derive_identity(dilithium_pk: &[u8]) -> [u8; 32] {
       'Two-column flight-deck HUD with 6 built-in themes (Solitude, Vantablack, Hackerman, Retro 82, Rose Pine, Flexoki Light), Nix flake packaging, and braille text-logo rasterization.',
     stack: ['Rust 2021', 'ratatui', 'NVML', 'Linux /proc', 'Kitty Graphics', 'Nix'],
     schematic: 'tachyon-deck',
-    codeExcerpt: `// Direct kernel surface walk · 0 forked subprocesses
-// /proc/stat + /sys/class/hwmon + DMI + NVML -> single composed frame
-tachyon --theme vantablack --modules cpu,gpu,mem,nvme,net`,
+    codeExcerpt: `// Direct kernel surface walk · 0 child forks
+// /proc/stat + /sys/class/hwmon + DMI + NVML
+tachyon --theme vantablack --modules cpu,gpu,mem`,
     highlights: [
       { label: 'Footprint', value: '1.9 MB release binary · 0 forks' },
       { label: 'Telemetry', value: '25 toggleable kernel/NVML modules' },
@@ -213,8 +215,9 @@ tachyon --theme vantablack --modules cpu,gpu,mem,nvme,net`,
       '15 crop-disease classes across Pepper, Potato, and Tomato trained on 14,434 train / 3,095 val / 3,095 test PlantVillage leaves with non-blocking worker supervision.',
     stack: ['Rust', 'egui / OpenGL', 'TensorFlow VGG16', 'SQLite', 'Nix Flake'],
     schematic: 'greenlens-cnn',
-    codeExcerpt: `// JSON-lines IPC: Rust egui <-> Python VGG16 inference worker
-{"image": "potato_late_blight.jpg"} -> {"class": "Potato___Late_blight", "prob": 0.961}`,
+    codeExcerpt: `// JSON-lines IPC: Rust egui <-> Python VGG16
+{"image": "potato_late_blight.jpg"}
+// -> {"class": "Potato___Late_blight", "prob": 0.961}`,
     highlights: [
       { label: 'Dataset', value: '14,434 train · 3,095 val · 3,095 test' },
       { label: 'Accuracy', value: '95.54% held-out · 0.950 macro F1' },
@@ -239,7 +242,7 @@ tachyon --theme vantablack --modules cpu,gpu,mem,nvme,net`,
       JavaScript: 1023,
       HTML: 813,
     },
-    updatedAt: '2026-06-21T20:49:23Z',
+    updatedAt: '2026-11-15T20:52:00Z',
     createdAt: '2026-06-21T20:38:29Z',
     stars: 0,
     forks: 0,
@@ -270,7 +273,7 @@ tachyon --theme vantablack --modules cpu,gpu,mem,nvme,net`,
     htmlUrl: 'https://github.com/mohamedsalahi/malloc_allocator',
     primaryLanguage: 'C',
     languages: { C: 6154, Makefile: 553 },
-    updatedAt: '2026-06-22T13:40:16Z',
+    updatedAt: '2026-11-16T09:55:15Z',
     createdAt: '2026-06-22T13:39:53Z',
     stars: 0,
     forks: 0,
@@ -281,9 +284,11 @@ tachyon --theme vantablack --modules cpu,gpu,mem,nvme,net`,
       'Trails linked-list block headers (size_t size, is_free, *next), merges contiguous freed blocks in O(n) pass, and implements my_calloc zero-fill plus my_realloc copy-on-grow.',
     stack: ['C99', 'POSIX sbrk()', 'pthread_mutex', 'Free-List', 'Makefile'],
     schematic: 'malloc-heap',
-    codeExcerpt: `typedef struct header_t { size_t size; unsigned int is_free; struct header_t *next; } header_t;
-void *my_malloc(size_t size);   // get_free_block or sbrk(24 + size)
-void  my_free(void *ptr);       // coalesce adjacent is_free blocks`,
+    codeExcerpt: `typedef struct header_t {
+  size_t size; unsigned int is_free; struct header_t *next;
+} header_t;
+void *my_malloc(size_t size); // free-list or sbrk(24 + size)
+void  my_free(void *ptr);     // coalesce contiguous free`,
     highlights: [
       { label: 'Header ABI', value: '24B header_t + POSIX sbrk()' },
       { label: 'Coalescing', value: 'Adjacent free header merge' },
@@ -329,7 +334,7 @@ prob  = 1.0 / (1.0 + math.exp(-logit))`,
     htmlUrl: 'https://github.com/mohamedsalahi/sysmon_daemon',
     primaryLanguage: 'Go',
     languages: { Go: 3948 },
-    updatedAt: '2026-06-22T13:40:28Z',
+    updatedAt: '2026-11-15T17:04:40Z',
     createdAt: '2026-06-22T13:39:54Z',
     stars: 0,
     forks: 0,
@@ -360,7 +365,7 @@ pids := scanProcPids("/proc")`,
     htmlUrl: 'https://github.com/mohamedsalahi/redis_clone',
     primaryLanguage: 'Go',
     languages: { Go: 3872 },
-    updatedAt: '2026-06-22T13:40:20Z',
+    updatedAt: '2026-11-16T08:33:49Z',
     createdAt: '2026-06-22T13:39:53Z',
     stars: 0,
     forks: 0,
@@ -410,43 +415,80 @@ PATCH /api/tasks?id=N  // toggle completion`,
       { label: 'Runtime', value: 'Zero external dependencies' },
     ],
   },
+  {
+    id: 'SIFR',
+    name: 'SIFR',
+    subtitle: 'Interactive 24-Cell Cipher Canvas & Systems Exhibition',
+    category: 'systems',
+    categoryLabel: 'Systems & Kernel',
+    featured: true,
+    htmlUrl: 'https://github.com/mohamedsalahi/SIFR',
+    primaryLanguage: 'TypeScript',
+    languages: { TypeScript: 224937, CSS: 3268, HTML: 1277 },
+    updatedAt: '2026-11-17T15:10:22Z',
+    createdAt: '2026-11-16T23:59:36Z',
+    stars: 0,
+    forks: 0,
+    summary:
+      'Original TypeScript and 2D physics architecture built from zero—unifying a 24-cell radial Alberti cipher ring, spring-damper cursor mechanics, Web Audio synthesis, and live hardware/kernel simulations across desktop and mobile stages.',
+    proofMetric: '12 synced repos · 24-cell physics ring · 0 templates',
+    architectureNote:
+      'Pure React + Canvas 2D + Framer Motion choreography driving live hardware telemetry, C heap allocators, Go backends, and Wayland/Vulkan proof benches inside one unbroken cinema ride.',
+    stack: ['TypeScript', 'Canvas 2D', 'Framer Motion', 'Web Audio Haptics', 'Tailwind CSS'],
+    schematic: 'sifr-cipher',
+    codeExcerpt: `// 24-cell radial Alberti cipher detent @ 15 deg
+const decoded = decodeRingAtShift(normalizeShift(shift));
+// shift === 0 -> "SIFR····" locks brass aperture ring`,
+    highlights: [
+      { label: 'Cipher Dial', value: '24 radial cells · 15° spring detents' },
+      { label: 'Mediums', value: 'Bespoke Desktop Gallery + Native Mobile Deck' },
+      { label: 'Live Repo', value: 'github.com/mohamedsalahi/SIFR' },
+    ],
+  },
 ];
 
 export const INITIAL_ACTIVITY: GitHubActivityItem[] = [
   {
-    id: 'ev-1',
+    id: 'ev-sifr',
     type: 'PushEvent',
-    repo: 'sifr-ml-systems',
-    createdAt: '2026-11-16T06:52:35Z',
-    actionLabel: 'Pushed RMSNorm & causal SDPA parity benchmarks',
+    repo: 'SIFR',
+    createdAt: '2026-11-17T15:09:28Z',
+    actionLabel: 'Shipped interactive physics exhibition & typography polish',
   },
   {
-    id: 'ev-2',
+    id: 'ev-verrev',
+    type: 'PushEvent',
+    repo: 'verrev',
+    createdAt: '2026-11-16T23:08:00Z',
+    actionLabel: 'Updated P2P OS workspace layers and verification suite',
+  },
+  {
+    id: 'ev-malloc',
+    type: 'PushEvent',
+    repo: 'malloc_allocator',
+    createdAt: '2026-11-16T09:55:15Z',
+    actionLabel: 'Refined free-list coalescing and allocator stress suite',
+  },
+  {
+    id: 'ev-ml',
+    type: 'PushEvent',
+    repo: 'sifr-ml-systems',
+    createdAt: '2026-11-16T08:33:48Z',
+    actionLabel: 'Pushed Triton & JAX XLA RMSNorm / causal SDPA benchmarks',
+  },
+  {
+    id: 'ev-native',
     type: 'PushEvent',
     repo: 'sifr-native',
-    createdAt: '2026-11-16T06:01:35Z',
+    createdAt: '2026-11-16T08:33:14Z',
     actionLabel: 'Verified Vulkan compute shader ring.comp on wayland-0',
   },
   {
-    id: 'ev-3',
-    type: 'PullRequestEvent',
-    repo: 'malloc_allocator',
-    createdAt: '2026-11-16T09:55:42Z',
-    actionLabel: 'Updated free-list coalescing & stress verification',
-  },
-  {
-    id: 'ev-4',
-    type: 'PullRequestEvent',
+    id: 'ev-redis',
+    type: 'PushEvent',
     repo: 'redis_clone',
-    createdAt: '2026-11-16T07:06:05Z',
+    createdAt: '2026-11-16T08:33:49Z',
     actionLabel: 'Refined concurrent socket command dispatch',
-  },
-  {
-    id: 'ev-5',
-    type: 'PublicEvent',
-    repo: 'verrev',
-    createdAt: '2026-08-25T15:32:14Z',
-    actionLabel: 'Published Verrev P2P OS architecture & 31 passing tests',
   },
 ];
 

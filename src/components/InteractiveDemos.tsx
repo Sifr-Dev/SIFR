@@ -16,7 +16,9 @@ import {
   type HeapState,
 } from '../lib/simulations';
 import { haptics } from '../lib/haptics';
+import { decodeRingAtShift, normalizeShift } from '../lib/cipher';
 import type { RepoSpec } from '../data/repos';
+import { PhysicsCipherCanvas } from './PhysicsCipherCanvas';
 
 interface InteractiveDemoProps {
   repo: RepoSpec;
@@ -46,6 +48,8 @@ export function InteractiveRepoDemo({ repo }: InteractiveDemoProps) {
       return <GoDbHexDemo />;
     case 'task_manager_cli':
       return <TaskManagerCliDemo />;
+    case 'SIFR':
+      return <SifrCipherDemo />;
     default:
       return (
         <pre className="border border-[#2d3038] bg-[#04060b] p-4 font-mobilis text-xs text-[#b9bec7] overflow-x-auto">
@@ -642,10 +646,78 @@ function VerrevDemo() {
 
 /* ============================================================================
  * 4. SIFR-NATIVE (mohamedsalahi/sifr-native/src/ring.comp & README.md)
- * Real pixel-level emulator of src/ring.comp GLSL compute shader + VkSubresourceLayers fix
+ * Real WebGL2 GLSL fragment shader pipeline executing ring.comp math + Canvas2D fallback
  * ==========================================================================*/
+const RING_VERT_SHADER = `#version 300 es
+in vec2 a_pos;
+void main() {
+  gl_Position = vec4(a_pos, 0.0, 1.0);
+}`;
+
+const RING_FRAG_SHADER = `#version 300 es
+precision highp float;
+uniform vec2 u_res;
+uniform float u_time;
+uniform float u_bug;
+out vec4 outColor;
+
+void main() {
+  if (u_bug > 0.5) {
+    outColor = vec4(0.0, 0.0, 0.0, 1.0);
+    return;
+  }
+
+  vec2 frag = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);
+  vec2 center = u_res * 0.5;
+  float scale = 0.62;
+  float spin = sin(u_time * 0.4) * 6.0 * scale;
+
+  vec3 col = vec3(4.0, 6.0, 11.0) / 255.0;
+  float dc = length(frag - center);
+
+  if (
+    abs(dc - 140.0 * scale) < 1.0 ||
+    abs(dc - 96.0 * scale) < 1.0 ||
+    abs(dc - 52.0 * scale) < 1.0
+  ) {
+    col = vec3(45.0, 48.0, 56.0) / 255.0;
+  }
+
+  for (int i = 0; i < 24; i++) {
+    float angle = float(i) * 0.2617993877991494 - 1.5707963267948966;
+    vec2 cellCenter = vec2(
+      center.x + cos(angle) * (140.0 * scale) + spin,
+      center.y + sin(angle) * (140.0 * scale)
+    );
+    float rad = (i == 0 ? 9.0 : 6.0) * scale;
+    if (length(frag - cellCenter) <= rad) {
+      if (i == 0) {
+        col = vec3(234.0, 180.0, 68.0) / 255.0;
+      } else {
+        col = vec3(243.0, 247.0, 254.0) / 255.0;
+      }
+    }
+  }
+
+  if (dc <= 12.0 * scale) {
+    col = vec3(234.0, 180.0, 68.0) / 255.0;
+  }
+
+  outColor = vec4(col, 1.0);
+}`;
+
 function SifrNativeDemo() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const glStateRef = useRef<{
+    gl: WebGL2RenderingContext;
+    program: WebGLProgram;
+    uRes: WebGLUniformLocation | null;
+    uTime: WebGLUniformLocation | null;
+    uBug: WebGLUniformLocation | null;
+    vao: WebGLVertexArrayObject | null;
+  } | null>(null);
+  const modeCheckedRef = useRef<'untested' | 'webgl2' | 'canvas2d'>('untested');
+  const [shaderBackend, setShaderBackend] = useState<'GLSL Fragment Pipeline' | 'Software Raster Fallback'>('GLSL Fragment Pipeline');
   const [pcTime, setPcTime] = useState(0);
   const [bugInjected, setBugInjected] = useState(false);
   const [frameIndex, setFrameIndex] = useState(24);
@@ -653,17 +725,80 @@ function SifrNativeDemo() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const w = 360;
+    const h = 220;
+
+    if (modeCheckedRef.current === 'untested') {
+      const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: true });
+      if (gl) {
+        const vs = gl.createShader(gl.VERTEX_SHADER);
+        const fs = gl.createShader(gl.FRAGMENT_SHADER);
+        if (vs && fs) {
+          gl.shaderSource(vs, RING_VERT_SHADER);
+          gl.compileShader(vs);
+          gl.shaderSource(fs, RING_FRAG_SHADER);
+          gl.compileShader(fs);
+          if (gl.getShaderParameter(vs, gl.COMPILE_STATUS) && gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+            const program = gl.createProgram();
+            if (program) {
+              gl.attachShader(program, vs);
+              gl.attachShader(program, fs);
+              gl.linkProgram(program);
+              if (gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                const vao = gl.createVertexArray();
+                gl.bindVertexArray(vao);
+                const buf = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+                gl.bufferData(
+                  gl.ARRAY_BUFFER,
+                  new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+                  gl.STATIC_DRAW
+                );
+                const loc = gl.getAttribLocation(program, 'a_pos');
+                gl.enableVertexAttribArray(loc);
+                gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+                glStateRef.current = {
+                  gl,
+                  program,
+                  uRes: gl.getUniformLocation(program, 'u_res'),
+                  uTime: gl.getUniformLocation(program, 'u_time'),
+                  uBug: gl.getUniformLocation(program, 'u_bug'),
+                  vao,
+                };
+                modeCheckedRef.current = 'webgl2';
+                setShaderBackend('GLSL Fragment Pipeline');
+              }
+            }
+          }
+          gl.deleteShader(vs);
+          gl.deleteShader(fs);
+        }
+      }
+      if (modeCheckedRef.current !== 'webgl2') {
+        modeCheckedRef.current = 'canvas2d';
+        setShaderBackend('Software Raster Fallback');
+      }
+    }
+
+    if (modeCheckedRef.current === 'webgl2' && glStateRef.current) {
+      const { gl, program, uRes, uTime, uBug, vao } = glStateRef.current;
+      gl.viewport(0, 0, w, h);
+      gl.useProgram(program);
+      gl.bindVertexArray(vao);
+      gl.uniform2f(uRes, w, h);
+      gl.uniform1f(uTime, pcTime);
+      gl.uniform1f(uBug, bugInjected ? 1.0 : 0.0);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      return;
+    }
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const w = 360;
-    const h = 220;
     const img = ctx.createImageData(w, h);
     const data = img.data;
 
     if (bugInjected) {
-      // Exact silent black image bug documented in sifr-native/README.md
-      // VkBufferImageCopy carrying 20B VkSubresourceRange instead of 16B VkSubresourceLayers
       for (let i = 0; i < data.length; i += 4) {
         data[i] = 0;
         data[i + 1] = 0;
@@ -674,7 +809,6 @@ function SifrNativeDemo() {
       return;
     }
 
-    // Exact pixel math from mohamedsalahi/sifr-native/src/ring.comp (scaled cleanly to 360x220)
     const cx = w * 0.5;
     const cy = h * 0.5;
     const scale = 0.62;
@@ -689,7 +823,6 @@ function SifrNativeDemo() {
         const dy = y - cy;
         const dc = Math.hypot(dx, dy);
 
-        // LINEC circles at r = 140, 96, 52 (scaled)
         if (
           Math.abs(dc - 140 * scale) < 1.0 ||
           Math.abs(dc - 96 * scale) < 1.0 ||
@@ -700,7 +833,6 @@ function SifrNativeDemo() {
           b = 56;
         }
 
-        // 24 orbital cells (i==0 brass r=9, else bone r=6)
         for (let i = 0; i < 24; i++) {
           const angle = i * 0.2617993877991494 - 1.5707963267948966;
           const ccx = cx + Math.cos(angle) * (140 * scale) + spin;
@@ -719,7 +851,6 @@ function SifrNativeDemo() {
           }
         }
 
-        // Brass center dot (r=12 scaled)
         if (dc <= 12.0 * scale) {
           r = 234;
           g = 180;
@@ -739,26 +870,26 @@ function SifrNativeDemo() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-[360px_1fr] gap-3 items-stretch">
-        <div className="border border-[#2d3038] bg-[#04060b] p-2 flex flex-col justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-3 items-stretch">
+        <div className="min-w-0 border border-[#2d3038] bg-[#04060b] p-2.5 flex flex-col justify-between gap-2">
           <canvas
             ref={canvasRef}
             width={360}
             height={220}
-            className="w-full h-[200px] object-contain border border-[#2d3038]"
-            aria-label="Live GLSL ring.comp compute shader output buffer"
+            className="w-full aspect-[360/220] object-contain border border-[#2d3038]"
+            aria-label="Live GLSL ring.comp shader output buffer"
           />
-          <div className="pt-2 flex items-center justify-between gap-2 font-mobilis text-[11px] text-[#9498a1]">
-            <span>src/ring.comp (RGBA8)</span>
+          <div className="flex flex-wrap items-center justify-between gap-1.5 font-mobilis text-[11px] text-[#9498a1]">
+            <span className="truncate">{shaderBackend}</span>
             <span className={bugInjected ? 'text-[#fc5855]' : 'text-[#eab444]'}>
-              {bugInjected ? '0x000000 silent black' : 'WAYLAND_PROTOCOL_OK'}
+              {bugInjected ? '0x000000 black' : 'WAYLAND_OK'}
             </span>
           </div>
         </div>
 
-        <div className="border border-[#2d3038] bg-[#04060b] p-3 flex flex-col justify-between space-y-3 font-mobilis text-xs">
+        <div className="min-w-0 border border-[#2d3038] bg-[#04060b] p-3 flex flex-col justify-between space-y-3 font-mobilis text-xs">
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-[#9498a1]">VkBufferImageCopy ABI</span>
               <span className="text-[#f3f7fe]">frames={frameIndex}</span>
             </div>
@@ -768,7 +899,7 @@ function SifrNativeDemo() {
                 haptics.trigger(bugInjected ? 'confirm' : 'garble');
                 setBugInjected((b) => !b);
               }}
-              className={`w-full min-h-[40px] px-3 py-1.5 border text-left transition-colors cursor-pointer ${
+              className={`w-full min-h-[40px] px-3 py-1.5 border text-left text-[11px] leading-snug transition-colors cursor-pointer ${
                 bugInjected
                   ? 'border-[#fc5855] bg-[#171b21] text-[#fc5855]'
                   : 'border-[#eab444] bg-[#171b21] text-[#eab444]'
@@ -799,7 +930,7 @@ function SifrNativeDemo() {
             />
           </label>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => {
@@ -807,7 +938,7 @@ function SifrNativeDemo() {
                 setFrameIndex((f) => (f % 24) + 1);
                 setPcTime((t) => (t + 0.8) % 15.7);
               }}
-              className="flex-1 min-h-[38px] px-2.5 py-1 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] text-[#f3f7fe] cursor-pointer"
+              className="flex-1 min-w-[120px] min-h-[38px] px-2.5 py-1 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] text-[#f3f7fe] cursor-pointer"
             >
               wl_surface.commit
             </button>
@@ -819,7 +950,7 @@ function SifrNativeDemo() {
                 setPcTime(0);
                 setBugInjected(false);
               }}
-              className="min-h-[38px] px-3 py-1 bg-[#eab444] text-[#04060b] font-bold cursor-pointer"
+              className="min-h-[38px] px-3 py-1 bg-[#eab444] text-[#04060b] font-bold cursor-pointer shrink-0"
             >
               Reset
             </button>
@@ -1125,7 +1256,7 @@ function ChurnEngineDemo() {
 
 /* ============================================================================
  * 7. MALLOC_ALLOCATOR (mohamedsalahi/malloc_allocator/src/malloc.c)
- * Exact 24B header_t + sbrk + my_calloc + my_realloc + my_free coalescing + print_heap()
+ * Real WebAssembly.Memory (64KiB linear buffer) + 24B header_t + coalescing + hex inspector
  * ==========================================================================*/
 function MallocAllocatorDemo() {
   const [heap, setHeap] = useState<HeapState>(() => {
@@ -1134,6 +1265,55 @@ function MallocAllocatorDemo() {
     h = mallocBlock(h, 64, 'ring_buf');
     return h;
   });
+  const [showWasmHex, setShowWasmHex] = useState(false);
+
+  const wasmMemRef = useRef<WebAssembly.Memory | null>(null);
+
+  const wasmHexRows = useMemo(() => {
+    if (!wasmMemRef.current && typeof WebAssembly !== 'undefined') {
+      wasmMemRef.current = new WebAssembly.Memory({ initial: 1 });
+    }
+    const mem = wasmMemRef.current;
+    if (!mem) return [];
+
+    const bytes = new Uint8Array(mem.buffer);
+    const view = new DataView(mem.buffer);
+    bytes.fill(0, 0, Math.min(bytes.length, 512));
+
+    heap.blocks.forEach((b, idx) => {
+      const off = b.headerOffset;
+      if (off + MALLOC_HEADER_SIZE >= bytes.length) return;
+      // 24-byte header_t layout: size (8B u64 LE), is_free (4B), pad (4B), next (8B u64 LE)
+      view.setUint32(off, b.size, true);
+      view.setUint32(off + 8, b.free ? 1 : 0, true);
+      const nextPtr = idx < heap.blocks.length - 1 ? heap.blocks[idx + 1].headerOffset : 0;
+      view.setUint32(off + 16, nextPtr, true);
+
+      // Write tag signature into first payload bytes for live linear buffer inspection
+      const tag = b.free ? 'FREE' : b.zeroed ? '\x00\x00\x00\x00' : (b.label ?? 'blk').slice(0, 8);
+      for (let i = 0; i < tag.length && off + MALLOC_HEADER_SIZE + i < bytes.length; i++) {
+        bytes[off + MALLOC_HEADER_SIZE + i] = tag.charCodeAt(i);
+      }
+    });
+
+    const totalLen = Math.min(256, Math.max(64, Math.ceil((heap.brkOffset || 64) / 16) * 16));
+    const rows: Array<{ addr: string; hex: string; ascii: string }> = [];
+    for (let addr = 0; addr < totalLen; addr += 16) {
+      const slice = bytes.slice(addr, addr + 16);
+      const hex = Array.from(slice)
+        .map((v) => v.toString(16).padStart(2, '0'))
+        .join(' ');
+      const ascii = Array.from(slice)
+        .map((v) => (v >= 32 && v <= 126 ? String.fromCharCode(v) : '.'))
+        .join('');
+      rows.push({
+        addr: `0x${addr.toString(16).padStart(4, '0')}`,
+        hex,
+        ascii,
+      });
+    }
+    return rows;
+  }, [heap]);
 
   const allocate = (size: number) => {
     haptics.trigger('confirm');
@@ -1181,6 +1361,20 @@ function MallocAllocatorDemo() {
         <button
           type="button"
           onClick={() => {
+            haptics.trigger('detent');
+            setShowWasmHex((v) => !v);
+          }}
+          className={`min-h-[38px] px-3 py-1.5 border font-mobilis text-xs cursor-pointer ${
+            showWasmHex
+              ? 'border-[#eab444] bg-[#eab444] text-[#04060b] font-bold'
+              : 'border-[#2d3038] bg-[#0a0d13] text-[#e4e8f1] hover:border-[#eab444]'
+          }`}
+        >
+          {showWasmHex ? 'Hide WASM Heap Bytes' : 'Inspect WASM Heap Bytes'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
             haptics.trigger('garble');
             setHeap(createHeap(0));
           }}
@@ -1193,7 +1387,9 @@ function MallocAllocatorDemo() {
       <div className="border border-[#2d3038] bg-[#04060b] p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 font-mobilis text-xs">
           <span className="text-[#eab444]">{heap.lastOp}</span>
-          <span className="text-[#9498a1]">sizeof(header_t) = {MALLOC_HEADER_SIZE}B · brk +{heap.brkOffset}B</span>
+          <span className="text-[#9498a1]">
+            WebAssembly.Memory (64KiB page 0) · brk +{heap.brkOffset}B
+          </span>
         </div>
 
         <div className="flex flex-wrap gap-1.5">
@@ -1235,9 +1431,24 @@ function MallocAllocatorDemo() {
           )}
         </div>
 
-        <pre className="bg-[#0a0d13] border border-[#2d3038] p-2.5 font-mobilis text-[11px] text-[#b9bec7] overflow-x-auto">
-          {`// print_heap()\n${dumpLines.join('\n')}`}
-        </pre>
+        {showWasmHex ? (
+          <div className="bg-[#0a0d13] border border-[#2d3038] p-2.5 font-mobilis text-[11px] overflow-x-auto space-y-0.5">
+            <div className="text-[#eab444] mb-1">
+              // WebAssembly.Memory linear buffer (24B LE header_t: size | is_free | next_ptr)
+            </div>
+            {wasmHexRows.map((row) => (
+              <div key={row.addr} className="flex gap-3 whitespace-nowrap">
+                <span className="text-[#9498a1]">{row.addr}</span>
+                <span className="text-[#e4e8f1]">{row.hex}</span>
+                <span className="text-[#78d29c]">{row.ascii}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <pre className="bg-[#0a0d13] border border-[#2d3038] p-2.5 font-mobilis text-[11px] text-[#b9bec7] overflow-x-auto">
+            {`// print_heap()\n${dumpLines.join('\n')}`}
+          </pre>
+        )}
       </div>
     </div>
   );
@@ -1597,6 +1808,66 @@ function TaskManagerCliDemo() {
 
       <div className="border border-[#2d3038] bg-[#0a0d13] px-3 py-2 font-mobilis text-[11px] text-[#eab444] overflow-x-auto whitespace-nowrap">
         sync.Mutex: {lastHttp}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * 12. SIFR (mohamedsalahi/SIFR)
+ * Interactive 24-cell Alberti cipher wheel & spring detent physics bench
+ * ==========================================================================*/
+function SifrCipherDemo() {
+  const [shift, setShift] = useState(0);
+  const decoded = decodeRingAtShift(shift);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              haptics.trigger('detent');
+              setShift((s) => normalizeShift(s - 1));
+            }}
+            className="min-h-[36px] px-3 py-1 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] font-mobilis text-xs font-medium text-[#f3f7fe] cursor-pointer"
+          >
+            -15° Detent
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              haptics.trigger('detent');
+              setShift((s) => normalizeShift(s + 1));
+            }}
+            className="min-h-[36px] px-3 py-1 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] font-mobilis text-xs font-medium text-[#f3f7fe] cursor-pointer"
+          >
+            +15° Detent
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              haptics.trigger('snapZero');
+              setShift(0);
+            }}
+            className="min-h-[36px] px-3 py-1 bg-[#eab444] text-[#04060b] font-mobilis text-xs font-bold cursor-pointer"
+          >
+            Lock Shift 0
+          </button>
+        </div>
+        <span className="font-mobilis text-xs font-semibold text-[#eab444]">
+          {decoded.word} · shift {shift}
+        </span>
+      </div>
+
+      <PhysicsCipherCanvas shift={shift} onShiftChange={setShift} compact />
+
+      <div className="border border-[#2d3038] bg-[#04060b] px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 font-mobilis text-xs font-medium">
+        <span className="text-[#a6acb9]">5-bit cells: {decoded.binaryGroups.join(' ')}</span>
+        <span className={decoded.isZeroShift ? 'text-[#40e080] font-semibold' : 'text-[#fc5855]'}>
+          {decoded.isZeroShift ? 'LOCKED · SIFR ALIGNED' : 'DETENT SHIFTED'}
+        </span>
       </div>
     </div>
   );

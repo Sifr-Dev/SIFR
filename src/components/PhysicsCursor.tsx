@@ -26,13 +26,18 @@ function classifyTarget(target: EventTarget | null): { mode: CursorMode; label: 
     const customLabel = interactive.getAttribute('data-cursor-label');
     if (customLabel) return { mode: 'action', label: customLabel };
     const text = (interactive.getAttribute('aria-label') || interactive.textContent || '').trim();
+    const isExternalLink =
+      interactive.tagName === 'A' && interactive.getAttribute('target') === '_blank';
+    if (isExternalLink || /^(repository|source|github)/i.test(text)) {
+      return { mode: 'action', label: 'SRC ↗' };
+    }
+    if (/inspect/i.test(text)) {
+      return { mode: 'action', label: 'INSPECT' };
+    }
     if (/launch lab|live demo|interactive demo/i.test(text)) {
       return { mode: 'action', label: 'LAB' };
     }
-    if (/github|source|repo|inspect/i.test(text)) {
-      return { mode: 'action', label: 'SRC ↗' };
-    }
-    if (/reel|play/i.test(text)) {
+    if (/reel|film|play/i.test(text)) {
       return { mode: 'action', label: 'REEL' };
     }
     return { mode: 'action', label: 'ENGAGE' };
@@ -44,6 +49,7 @@ function classifyTarget(target: EventTarget | null): { mode: CursorMode; label: 
 export function PhysicsCursor({ enabled }: PhysicsCursorProps) {
   const pinRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
+  const trailRef = useRef<HTMLDivElement | null>(null);
   const labelRef = useRef<HTMLDivElement | null>(null);
 
   const [canRender, setCanRender] = useState(false);
@@ -86,6 +92,10 @@ export function PhysicsCursor({ enabled }: PhysicsCursorProps) {
       fy: window.innerHeight / 2,
       vx: 0,
       vy: 0,
+      hx: window.innerWidth / 2,
+      hy: window.innerHeight / 2,
+      hvx: 0,
+      hvy: 0,
       pulse: 0,
       hoverX: 0,
       hoverY: 0,
@@ -109,6 +119,16 @@ export function PhysicsCursor({ enabled }: PhysicsCursorProps) {
       state.fx += state.vx * dt;
       state.fy += state.vy * dt;
 
+      // Softer ghost orbital halo spring
+      const hStiff = 96;
+      const hDamp = 15;
+      const hax = (state.tx - state.hx) * hStiff - state.hvx * hDamp;
+      const hay = (state.ty - state.hy) * hStiff - state.hvy * hDamp;
+      state.hvx += hax * dt;
+      state.hvy += hay * dt;
+      state.hx += state.hvx * dt;
+      state.hy += state.hvy * dt;
+
       if (state.pulse > 0) {
         state.pulse = Math.max(0, state.pulse - dt * 4.5);
       }
@@ -123,29 +143,43 @@ export function PhysicsCursor({ enabled }: PhysicsCursorProps) {
             ? 1.08 + state.pulse * 0.25
             : 1 + state.pulse * 0.28 + Math.min(0.12, speed * 0.00018);
 
+      const haloScale = 1 + state.pulse * 0.55 + Math.min(0.45, speed * 0.00035);
+
       if (pinRef.current) {
         pinRef.current.style.transform = `translate3d(${state.tx}px, ${state.ty}px, 0) scale(${1 + state.pulse * 0.45})`;
       }
       if (frameRef.current) {
         frameRef.current.style.transform = `translate3d(${state.fx}px, ${state.fy}px, 0) rotate(${baseRot + tiltDeg}deg) scale(${scale})`;
       }
+      if (trailRef.current) {
+        trailRef.current.style.transform = `translate3d(${state.hx}px, ${state.hy}px, 0) scale(${haloScale})`;
+        trailRef.current.style.opacity = modeRef.current === 'text' ? '0' : String(Math.min(0.55, 0.2 + speed * 0.0003 + state.pulse * 0.35));
+      }
       if (labelRef.current) {
         labelRef.current.style.transform = `translate3d(${state.fx + 18}px, ${state.fy + 16}px, 0)`;
       }
 
-      const delta = Math.hypot(state.tx - state.fx, state.ty - state.fy);
-      const kinetic = Math.abs(state.vx) + Math.abs(state.vy);
-      if (delta > 0.15 || kinetic > 0.8 || state.pulse > 0.01) {
+      const delta = Math.hypot(state.tx - state.fx, state.ty - state.fy) + Math.hypot(state.tx - state.hx, state.ty - state.hy);
+      const kinetic = Math.abs(state.vx) + Math.abs(state.vy) + Math.abs(state.hvx) + Math.abs(state.hvy);
+      if (delta > 0.2 || kinetic > 0.8 || state.pulse > 0.01) {
         rafId = requestAnimationFrame(step);
       } else {
         state.fx = state.tx;
         state.fy = state.ty;
+        state.hx = state.tx;
+        state.hy = state.ty;
         state.vx = 0;
         state.vy = 0;
+        state.hvx = 0;
+        state.hvy = 0;
         if (frameRef.current) {
           frameRef.current.style.transform = `translate3d(${state.fx}px, ${state.fy}px, 0) rotate(${baseRot}deg) scale(${
             modeRef.current === 'action' ? 0.92 : modeRef.current === 'cipher' ? 1.08 : 1
           })`;
+        }
+        if (trailRef.current) {
+          trailRef.current.style.transform = `translate3d(${state.hx}px, ${state.hy}px, 0) scale(1)`;
+          trailRef.current.style.opacity = modeRef.current === 'text' ? '0' : '0.18';
         }
         running = false;
       }
@@ -164,6 +198,8 @@ export function PhysicsCursor({ enabled }: PhysicsCursorProps) {
       if (!visibleRef.current) {
         state.fx = e.clientX;
         state.fy = e.clientY;
+        state.hx = e.clientX;
+        state.hy = e.clientY;
         visibleRef.current = true;
         setVisible(true);
       }
@@ -214,6 +250,20 @@ export function PhysicsCursor({ enabled }: PhysicsCursorProps) {
       className="pointer-events-none fixed inset-0 z-[9999] overflow-hidden transition-opacity duration-150"
       style={{ opacity: visible ? 1 : 0 }}
     >
+      {/* Ghost celestial halo ring */}
+      <div
+        ref={trailRef}
+        className="absolute top-0 left-0 will-change-transform border border-[#eab444]/40"
+        style={{
+          width: '44px',
+          height: '44px',
+          marginLeft: '-22px',
+          marginTop: '-22px',
+          borderRadius: '9999px',
+          opacity: 0.18,
+        }}
+      />
+
       {/* Spring-damper trailing architectural reticle */}
       <div
         ref={frameRef}

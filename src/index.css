@@ -2,23 +2,15 @@
 
 @font-face {
   font-family: "Instrument Sans";
-  font-weight: 400 500;
+  font-weight: 400 700;
   font-style: normal;
   font-display: swap;
-  src: url("/fonts/InstrumentSans-Regular.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Instrument Sans";
-  font-weight: 600 700;
-  font-style: normal;
-  font-display: swap;
-  src: url("/fonts/InstrumentSans-Bold.ttf") format("truetype");
+  src: url("/fonts/InstrumentSans-Var.ttf") format("truetype");
 }
 
 @font-face {
   font-family: "Geist Mono";
-  font-weight: 400 500;
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
   src: url("/fonts/GeistMono-Regular.ttf") format("truetype");
@@ -26,7 +18,23 @@
 
 @font-face {
   font-family: "Geist Mono";
-  font-weight: 600 700;
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/GeistMono-Medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/GeistMono-SemiBold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
   src: url("/fonts/GeistMono-Bold.ttf") format("truetype");
@@ -38,8 +46,8 @@
   --raised: #171b21;
   --line: #2d3038;
   --text: #f3f7fe;
-  --text-2: #d2d7e2;
-  --muted: #9ca2af;
+  --text-2: #dde2ec;
+  --muted: #a6acb9;
   --key: #eab444;
   --key-strong: #d39900;
   --key-ink: #04060b;
@@ -73,8 +81,10 @@
     background-color: var(--void);
     color: var(--text);
     font-family: var(--font-stabilis);
+    font-weight: 500;
     font-size: 16px;
-    line-height: 1.6;
+    line-height: 1.62;
+    letter-spacing: 0.005em;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -166,4 +176,24 @@
   html[data-custom-cursor="active"] [role="tab"] {
     cursor: none !important;
   }
+}
+
+/* Ethereal architectural micro-texture & obsidian depth vignette */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0.22;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(243, 247, 254, 0.035) 1px, transparent 0),
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(234, 180, 68, 0.04), transparent 72%);
+  background-size: 24px 24px, 100% 100%;
+}
+
+.ethereal-surface {
+  background:
+    radial-gradient(ellipse 85% 60% at 50% 0%, rgba(234, 180, 68, 0.045), transparent 70%),
+    linear-gradient(180deg, #0a0d13 0%, #07090e 100%);
 }

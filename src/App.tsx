@@ -4,12 +4,17 @@ import { useGitHubTelemetry } from './hooks/useGitHubTelemetry';
 import { useIsMobileViewport } from './hooks/useIsMobileViewport';
 import { haptics, type HapticKind } from './lib/haptics';
 import {
-  CANONICAL_TRACK_ORDER,
+  RIDE_STORAGE_KEY,
   advanceRide,
   createInitialRideState,
   enterRide,
+  getActForRepoId,
+  getOrderedTrack,
   jumpToUnlockedStation,
+  parseRideState,
+  resolveSceneParam,
   restartRide,
+  serializeRideState,
   stepBackRide,
   type RideState,
 } from './lib/narrative';
@@ -29,21 +34,50 @@ export default function App() {
   const [showreelOpen, setShowreelOpen] = useState(false);
   const [lastHaptic, setLastHaptic] = useState<{ kind: HapticKind; ts: number } | null>(null);
 
+  const orderedRepos = useMemo(() => getOrderedTrack(repos), [repos]);
+
   const [rideState, setRideState] = useState<RideState>(() => {
-    const base = createInitialRideState();
-    if (
-      typeof window !== 'undefined' &&
-      new URLSearchParams(window.location.search).get('autostart') === '1'
-    ) {
-      return enterRide(base);
+    const initialTrack = getOrderedTrack(repos);
+    let base = createInitialRideState();
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = parseRideState(window.sessionStorage.getItem(RIDE_STORAGE_KEY), initialTrack.length);
+        if (stored) base = stored;
+      } catch {
+        // Ignore restricted sessionStorage contexts
+      }
+      if (new URLSearchParams(window.location.search).get('autostart') === '1') {
+        base = enterRide(base);
+      }
+      base = resolveSceneParam(window.location.search, base, initialTrack);
     }
     return base;
   });
 
-  const orderedRepos = useMemo(() => {
-    const byId = new Map(repos.map((r) => [r.id, r]));
-    return CANONICAL_TRACK_ORDER.map((id) => byId.get(id)).filter((r): r is RepoSpec => Boolean(r));
-  }, [repos]);
+  // Persist session ride state
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.sessionStorage.setItem(RIDE_STORAGE_KEY, serializeRideState(rideState));
+    } catch {
+      // Ignore storage failures
+    }
+  }, [rideState]);
+
+  // Sync procedural per-Act Web Audio ambient drone
+  useEffect(() => {
+    if (!rideState.hasEntered) {
+      haptics.setAmbientAct('entrance');
+      return;
+    }
+    if (rideState.hasExited) {
+      haptics.setAmbientAct('exit');
+      return;
+    }
+    const activeRepo = orderedRepos[rideState.currentIndex];
+    const act = activeRepo ? getActForRepoId(activeRepo.id) : null;
+    haptics.setAmbientAct(act?.id ?? 'act-1');
+  }, [orderedRepos, rideState.currentIndex, rideState.hasEntered, rideState.hasExited]);
 
   useEffect(() => {
     return haptics.subscribe((kind, ts) => {
@@ -57,6 +91,18 @@ export default function App() {
     haptics.setAudioEnabled(next);
     if (!next) {
       haptics.trigger('tap');
+    }
+  };
+
+  const handleRestartRide = () => {
+    const fresh = restartRide();
+    setRideState(fresh);
+    if (typeof window !== 'undefined') {
+      try {
+        window.sessionStorage.removeItem(RIDE_STORAGE_KEY);
+      } catch {
+        // Ignore
+      }
     }
   };
 
@@ -82,10 +128,12 @@ export default function App() {
           onToggleAudio={handleToggleAudio}
           rideState={rideState}
           onEnterRide={() => setRideState((prev) => enterRide(prev))}
-          onAdvanceRide={() => setRideState((prev) => advanceRide(prev))}
+          onAdvanceRide={() => setRideState((prev) => advanceRide(prev, orderedRepos.length))}
           onStepBackRide={() => setRideState((prev) => stepBackRide(prev))}
-          onJumpToStation={(idx) => setRideState((prev) => jumpToUnlockedStation(prev, idx))}
-          onRestartRide={() => setRideState(restartRide())}
+          onJumpToStation={(idx) =>
+            setRideState((prev) => jumpToUnlockedStation(prev, idx, orderedRepos.length))
+          }
+          onRestartRide={handleRestartRide}
           onOpenShowreel={() => setShowreelOpen(true)}
         />
       ) : (
@@ -101,10 +149,12 @@ export default function App() {
           onToggleAudio={handleToggleAudio}
           rideState={rideState}
           onEnterRide={() => setRideState((prev) => enterRide(prev))}
-          onAdvanceRide={() => setRideState((prev) => advanceRide(prev))}
+          onAdvanceRide={() => setRideState((prev) => advanceRide(prev, orderedRepos.length))}
           onStepBackRide={() => setRideState((prev) => stepBackRide(prev))}
-          onJumpToStation={(idx) => setRideState((prev) => jumpToUnlockedStation(prev, idx))}
-          onRestartRide={() => setRideState(restartRide())}
+          onJumpToStation={(idx) =>
+            setRideState((prev) => jumpToUnlockedStation(prev, idx, orderedRepos.length))
+          }
+          onRestartRide={handleRestartRide}
           onOpenRepoModal={(repo) => setModalRepo(repo)}
           onOpenShowreel={() => setShowreelOpen(true)}
           paused={Boolean(modalRepo) || showreelOpen}
