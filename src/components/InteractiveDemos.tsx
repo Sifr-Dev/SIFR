@@ -50,6 +50,16 @@ export function InteractiveRepoDemo({ repo }: InteractiveDemoProps) {
       return <TaskManagerCliDemo />;
     case 'SIFR':
       return <SifrCipherDemo />;
+    case 'sifr-apps':
+      return <SifrAppsDemo />;
+    case 'sifr-probe':
+    case 'sifr-query':
+    case 'sifr-crypt':
+    case 'sifr-md':
+    case 'sifr-inflate':
+    case 'sifr-diff':
+    case 'sifr-serve':
+      return <SifrCliToolDemo repoId={repo.id} />;
     default:
       return (
         <pre className="border border-[#2d3038] bg-[#04060b] p-4 font-mobilis text-xs text-[#b9bec7] overflow-x-auto">
@@ -968,7 +978,7 @@ function SifrNativeDemo() {
 const GREENLENS_SAMPLES = [
   {
     id: 'Potato___Late_blight',
-    title: 'Potato — Late Blight',
+    title: 'Potato: Late Blight',
     pathogen: 'Phytophthora infestans',
     precision: 0.937,
     recall: 0.987,
@@ -985,7 +995,7 @@ const GREENLENS_SAMPLES = [
   },
   {
     id: 'Tomato_Septoria_leaf_spot',
-    title: 'Tomato — Septoria Leaf Spot',
+    title: 'Tomato: Septoria Leaf Spot',
     pathogen: 'Septoria lycopersici',
     precision: 0.969,
     recall: 0.932,
@@ -1002,7 +1012,7 @@ const GREENLENS_SAMPLES = [
   },
   {
     id: 'Tomato__Tomato_YellowLeaf__Curl_Virus',
-    title: 'Tomato — Yellow Leaf Curl Virus',
+    title: 'Tomato: Yellow Leaf Curl Virus',
     pathogen: 'Begomovirus (TYLCV · Bemisia tabaci vector)',
     precision: 0.994,
     recall: 0.975,
@@ -1019,7 +1029,7 @@ const GREENLENS_SAMPLES = [
   },
   {
     id: 'Pepper__bell___Bacterial_spot',
-    title: 'Pepper Bell — Bacterial Spot',
+    title: 'Pepper Bell: Bacterial Spot',
     pathogen: 'Xanthomonas euvesicatoria (prevalent in Egypt)',
     precision: 0.993,
     recall: 0.953,
@@ -1868,6 +1878,294 @@ function SifrCipherDemo() {
         <span className={decoded.isZeroShift ? 'text-[#40e080] font-semibold' : 'text-[#fc5855]'}>
           {decoded.isZeroShift ? 'LOCKED · SIFR ALIGNED' : 'DETENT SHIFTED'}
         </span>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * 13. SIFR-APPS (rex, cipherterm, nocturne on Cipher)
+ * ==========================================================================*/
+const CIPHER_APPS = [
+  {
+    id: 'rex',
+    title: 'rex',
+    role: 'Unix-socket multiplexer + scriptable CLI',
+    command: 'rex split --vertical && rex send pane:1 "zig build"',
+    metric: 'Unix AF_UNIX IPC · 0 external deps',
+    screen: [
+      '[session: main · 2 panes · socket /tmp/rex-1000.sock]',
+      '┌─ pane:0 (zsh) ────────────────┬─ pane:1 (zig) ────────────────┐',
+      '│ $ cd sifr-native              │ $ zig build test              │',
+      '│ $ ./zig-out/bin/cipherterm    │ All 24 protocol tests passed. │',
+      '└───────────────────────────────┴───────────────────────────────┘',
+    ].join('\n'),
+  },
+  {
+    id: 'cipherterm',
+    title: 'cipherterm',
+    role: 'Vulkan GPU terminal client with panes and live RSS',
+    command: 'cipherterm --theme obsidian --hidpi 2.0',
+    metric: '12.4 MB RSS · Vulkan push_constants',
+    screen: [
+      'cipherterm [vulkan · 2x HiDPI · 12.4 MB RSS]',
+      '> wl_display.connect()            OK',
+      '> vkCreateSwapchainKHR()          144 Hz FIFO',
+      '> rex attach main                 2 panes linked',
+    ].join('\n'),
+  },
+  {
+    id: 'nocturne',
+    title: 'nocturne',
+    role: 'Offline FLAC audio player built on Cipher',
+    command: 'nocturne ~/music/album/*.flac',
+    metric: '24-bit / 96 kHz · Gapless ALSA/PipeWire',
+    screen: [
+      'nocturne [offline FLAC · 24-bit / 96 kHz]',
+      'Track 03 / 11 · Zero Network Access',
+      '[=================>----------] 02:41 / 04:18',
+      'Decoded purely local PCM frames on Cipher UI thread.',
+    ].join('\n'),
+  },
+] as const;
+
+function SifrAppsDemo() {
+  const [selectedApp, setSelectedApp] = useState<'rex' | 'cipherterm' | 'nocturne'>('rex');
+  const active = CIPHER_APPS.find((a) => a.id === selectedApp) ?? CIPHER_APPS[0];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {CIPHER_APPS.map((app) => (
+            <button
+              key={app.id}
+              type="button"
+              onClick={() => {
+                haptics.trigger('detent');
+                setSelectedApp(app.id);
+              }}
+              className={`min-h-[36px] px-3 py-1 font-mobilis text-xs border cursor-pointer ${
+                selectedApp === app.id
+                  ? 'border-[#eab444] bg-[#eab444] text-[#04060b] font-bold'
+                  : 'border-[#2d3038] bg-[#0a0d13] text-[#b9bec7]'
+              }`}
+            >
+              {app.title}
+            </button>
+          ))}
+        </div>
+        <span className="font-mobilis text-xs text-[#eab444]">{active.metric}</span>
+      </div>
+
+      <div className="border border-[#2d3038] bg-[#04060b] p-4 space-y-2.5">
+        <div className="text-xs text-[#a6acb9]">{active.role}</div>
+        <div className="font-mobilis text-[11px] text-[#eab444] bg-[#0a0d13] border border-[#2d3038] px-3 py-2">
+          $ {active.command}
+        </div>
+        <pre className="font-mobilis text-xs text-[#f3f7fe] bg-[#0a0d13] border border-[#2d3038] p-3 overflow-x-auto leading-relaxed">
+          {active.screen}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * 14. CLI SUITE (sifr-probe, sifr-query, sifr-crypt, sifr-md, sifr-inflate, sifr-diff, sifr-serve)
+ * ==========================================================================*/
+const CLI_TOOL_SPECS: Record<
+  string,
+  {
+    presets: { label: string; cmd: string; output: string }[];
+  }
+> = {
+  'sifr-probe': {
+    presets: [
+      {
+        label: 'HTTP Latency',
+        cmd: 'sifrprobe api.github.com:80 -n 20 --http',
+        output: [
+          'target: api.github.com:80 (20 samples)',
+          'tcp connect  min 11.2ms  p50 14.1ms  p90 18.4ms  p99 22.9ms',
+          'http 1st-B   min 32.8ms  p50 38.4ms  p90 46.2ms  p99 54.0ms',
+        ].join('\n'),
+      },
+      {
+        label: 'JSON Output',
+        cmd: 'sifrprobe localhost:3000 -n 10 --json',
+        output: '{"host":"localhost:3000","samples":10,"p50_ms":0.24,"p90_ms":0.39,"p99_ms":0.52,"errors":0}',
+      },
+    ],
+  },
+  'sifr-query': {
+    presets: [
+      {
+        label: 'Group & Sum',
+        cmd: 'sifr-query events.csv --where "status=200" --group-by route --sum bytes',
+        output: [
+          'route       | count | sum(bytes)',
+          '------------+-------+-----------',
+          '/api/signal |    42 |     118420',
+          '/api/repos  |   198 |     842100',
+        ].join('\n'),
+      },
+      {
+        label: 'Top-N Filter',
+        cmd: 'sifr-query traces.csv --select service,p99_ms --sort-desc p99_ms --limit 3',
+        output: [
+          'service,p99_ms',
+          'verrev-p2p,14.8',
+          'go_db-pgx,6.2',
+          'sifr-serve,0.4',
+        ].join('\n'),
+      },
+    ],
+  },
+  'sifr-crypt': {
+    presets: [
+      {
+        label: 'FIPS 180-4 Self-Test',
+        cmd: './sifr-crypt sha256 --selftest',
+        output: [
+          'KAT ""              -> e3b0c44298fc1c149afbf4c8996fb924... [OK]',
+          'KAT "abc"           -> ba7816bf8f01cfea414140de5dae2223... [OK]',
+          'KAT 448-bit padding -> 248d6a61d20638b8e5c026930c3e6039... [OK]',
+          'SHA256_SELFTEST: 100% PASSED',
+        ].join('\n'),
+      },
+      {
+        label: 'Hash Stdin',
+        cmd: 'printf "sifr" | ./sifr-crypt sha256 -',
+        output: '9f8e1a44b1c074a5d2e991167c2c44d8f8b2a58c0e4012fa76c218d4029011ab  -',
+      },
+    ],
+  },
+  'sifr-md': {
+    presets: [
+      {
+        label: 'Render README',
+        cmd: 'cat README.md | sifr-md --width 72',
+        output: [
+          '[H1] Cipher Framework',
+          '─────────────────────',
+          '  * Zero dependencies (Wayland socket + Vulkan)',
+          '  * `zig build test` passes without libc wrappers',
+        ].join('\n'),
+      },
+      {
+        label: 'Code Block Highlight',
+        cmd: 'sifr-md docs/spec.md',
+        output: [
+          '[QUOTE] Keep runtime layers minimal and inspectable.',
+          '[CODE:rust] fn inflate_block(bits: &mut BitReader) -> Result<Vec<u8>>',
+        ].join('\n'),
+      },
+    ],
+  },
+  'sifr-inflate': {
+    presets: [
+      {
+        label: 'Gzip Decompress',
+        cmd: 'sifr-inflate < archive.tar.gz | sha256sum',
+        output: [
+          'header: RFC 1952 gzip (CM=8 DEFLATE)',
+          'stream: dynamic Huffman blocks (32 KiB sliding window)',
+          'trailer: CRC-32 0x84a1c902 MATCH · ISIZE 163840 bytes OK',
+        ].join('\n'),
+      },
+      {
+        label: '21-Fixture Parity',
+        cmd: 'cargo test --test zcat_parity',
+        output: 'running 21 tests: empty, ascii, utf8, binary, 160KB level 1/6/9 ... 21 passed',
+      },
+    ],
+  },
+  'sifr-diff': {
+    presets: [
+      {
+        label: 'Unified Diff',
+        cmd: 'sifr-diff -u old.rs new.rs',
+        output: [
+          '@@ -12,4 +12,4 @@ fn handle_client(stream: TcpStream) {',
+          '     let path = canonicalize_safe(&req.target)?;',
+          '-    let mime = "application/octet-stream";',
+          '+    let mime = detect_mime_type(&path);',
+          ' }',
+        ].join('\n'),
+      },
+      {
+        label: 'Exit Codes',
+        cmd: 'sifr-diff a.bin b.bin; echo "exit=$?"',
+        output: 'exit=0 (identical) | exit=1 (differs) | exit=2 (I/O error) matching GNU diff -u',
+      },
+    ],
+  },
+  'sifr-serve': {
+    presets: [
+      {
+        label: 'Serve Directory',
+        cmd: 'sifr-serve ./dist --port 8080',
+        output: [
+          'Listening on http://127.0.0.1:8080 (root ./dist)',
+          'GET /index.html     200 text/html (1.5 KB)',
+          'GET /app.js         200 application/javascript (42.8 KB)',
+          'GET /../etc/passwd  403 Forbidden (path traversal blocked)',
+        ].join('\n'),
+      },
+      {
+        label: 'HEAD Request',
+        cmd: 'curl -I http://127.0.0.1:8080/style.css',
+        output: [
+          'HTTP/1.1 200 OK',
+          'Content-Type: text/css; charset=utf-8',
+          'Content-Length: 4495',
+          'Connection: close',
+        ].join('\n'),
+      },
+    ],
+  },
+};
+
+function SifrCliToolDemo({ repoId }: { repoId: string }) {
+  const spec = CLI_TOOL_SPECS[repoId] ?? CLI_TOOL_SPECS['sifr-serve'];
+  const [presetIdx, setPresetIdx] = useState(0);
+
+  useEffect(() => {
+    setPresetIdx(0);
+  }, [repoId]);
+
+  const preset = spec.presets[presetIdx] ?? spec.presets[0];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-1.5">
+        {spec.presets.map((p, idx) => (
+          <button
+            key={p.label}
+            type="button"
+            onClick={() => {
+              haptics.trigger('detent');
+              setPresetIdx(idx);
+            }}
+            className={`min-h-[36px] px-3 py-1 font-mobilis text-xs border cursor-pointer ${
+              presetIdx === idx
+                ? 'border-[#eab444] bg-[#eab444] text-[#04060b] font-bold'
+                : 'border-[#2d3038] bg-[#0a0d13] text-[#b9bec7]'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="border border-[#2d3038] bg-[#04060b] p-4 space-y-2.5">
+        <div className="font-mobilis text-[11px] text-[#eab444] bg-[#0a0d13] border border-[#2d3038] px-3 py-2 overflow-x-auto whitespace-nowrap">
+          $ {preset.cmd}
+        </div>
+        <pre className="font-mobilis text-xs text-[#f3f7fe] bg-[#0a0d13] border border-[#2d3038] p-3 overflow-x-auto leading-relaxed">
+          {preset.output}
+        </pre>
       </div>
     </div>
   );

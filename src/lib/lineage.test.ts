@@ -27,19 +27,18 @@ test('lineage graph resolves upstream dependencies and downstream dependents bi-
   assert.ok(mallocRel.powers.includes('redis_clone'));
   assert.ok(mallocRel.powers.includes('verrev'));
 
-  const verrevRel = getLineageConnections('verrev');
-  assert.ok(verrevRel.builtUpon.includes('malloc_allocator'));
-  assert.ok(verrevRel.builtUpon.includes('sifr-native'));
-  assert.deepEqual(verrevRel.powers, ['SIFR']);
+  const cipherRel = getLineageConnections('sifr-native');
+  assert.ok(cipherRel.builtUpon.includes('tachyon-fetch'));
+  assert.ok(cipherRel.powers.includes('sifr-apps'));
 });
 
-test('filterAtlasRepos filters cleanly across all 4 canonical acts', () => {
+test('filterAtlasRepos filters cleanly across all 4 chronological parts (20 repos total)', () => {
   const options = getActFilterOptions();
   assert.equal(options.length, 5);
-  assert.equal(filterAtlasRepos(REPOSITORIES, 'all').length, 12);
-  assert.equal(filterAtlasRepos(REPOSITORIES, 'act-1').length, 4);
-  assert.equal(filterAtlasRepos(REPOSITORIES, 'act-2').length, 2);
-  assert.equal(filterAtlasRepos(REPOSITORIES, 'act-3').length, 3);
-  assert.equal(filterAtlasRepos(REPOSITORIES, 'act-4').length, 3);
-  assert.equal(Object.keys(REPO_LINEAGE).length, 12);
+  assert.equal(filterAtlasRepos(REPOSITORIES, 'all').length, 20);
+  assert.equal(filterAtlasRepos(REPOSITORIES, 'act-1').length, 5);
+  assert.equal(filterAtlasRepos(REPOSITORIES, 'act-2').length, 3);
+  assert.equal(filterAtlasRepos(REPOSITORIES, 'act-3').length, 5);
+  assert.equal(filterAtlasRepos(REPOSITORIES, 'act-4').length, 7);
+  assert.equal(Object.keys(REPO_LINEAGE).length, 20);
 });

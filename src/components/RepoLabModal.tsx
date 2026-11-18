@@ -5,10 +5,12 @@ import { getStoryForRepo } from '../data/stories';
 import { buildSceneSharePath, getActForRepoId } from '../lib/narrative';
 import { getLineageForRepo } from '../lib/lineage';
 import { getTablistTargetIndex } from '../lib/keyboard';
+import { useRepoLiveDetail } from '../hooks/useRepoLiveDetail';
 import { ProjectPhysicsIllustration } from './ProjectPhysicsIllustration';
 import { InteractiveRepoDemo } from './InteractiveDemos';
 import { ReadmeShowcase } from './ReadmeShowcase';
 import { ArchitectureBenchShowcase } from './ArchitectureBenchShowcase';
+import { ContributionTimeline } from './ContributionTimeline';
 import { SyntaxCodeBlock } from './SyntaxCodeBlock';
 import { haptics } from '../lib/haptics';
 import { formatRelativeDate } from '../lib/githubStats';
@@ -18,8 +20,6 @@ interface RepoLabModalProps {
   onClose: () => void;
   onSelectRepo: (repo: RepoSpec) => void;
   allRepos: RepoSpec[];
-  maxUnlockedIndex?: number;
-  hasExited?: boolean;
 }
 
 export function RepoLabModal({
@@ -27,23 +27,42 @@ export function RepoLabModal({
   onClose,
   onSelectRepo,
   allRepos,
-  maxUnlockedIndex = 11,
-  hasExited = true,
 }: RepoLabModalProps) {
+  if (!repo) return null;
+  return (
+    <RepoLabModalInner
+      repo={repo}
+      onClose={onClose}
+      onSelectRepo={onSelectRepo}
+      allRepos={allRepos}
+    />
+  );
+}
+
+function RepoLabModalInner({
+  repo,
+  onClose,
+  onSelectRepo,
+  allRepos,
+}: {
+  repo: RepoSpec;
+  onClose: () => void;
+  onSelectRepo: (repo: RepoSpec) => void;
+  allRepos: RepoSpec[];
+}) {
   const [viewMode, setViewMode] = useState<'demo' | 'bench' | 'readme'>('demo');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedBuild, setCopiedBuild] = useState(false);
   const viewTabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const liveDetail = useRepoLiveDetail(repo.name);
 
   useEffect(() => {
     setViewMode('demo');
     setCopiedLink(false);
     setCopiedBuild(false);
-  }, [repo?.id]);
+  }, [repo.id]);
 
   useEffect(() => {
-    if (!repo) return;
-    const visited = allRepos.filter((_, idx) => hasExited || idx <= maxUnlockedIndex);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         haptics.trigger('tap');
@@ -51,31 +70,32 @@ export function RepoLabModal({
         return;
       }
       const target = e.target as HTMLElement | null;
-      if (target?.closest('[role="tablist"]') || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') {
+      if (
+        target?.closest('[role="tablist"]') ||
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA'
+      ) {
         return;
       }
-      if (visited.length > 1 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-        const curIdx = visited.findIndex((r) => r.id === repo.id);
+      if (allRepos.length > 1 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        const curIdx = allRepos.findIndex((r) => r.id === repo.id);
         if (curIdx < 0) return;
         const delta = e.key === 'ArrowRight' ? 1 : -1;
         const nextIdx = curIdx + delta;
-        if (nextIdx >= 0 && nextIdx < visited.length) {
+        if (nextIdx >= 0 && nextIdx < allRepos.length) {
           e.preventDefault();
           haptics.trigger('detent');
-          onSelectRepo(visited[nextIdx]);
+          onSelectRepo(allRepos[nextIdx]);
         }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [repo, onClose, allRepos, hasExited, maxUnlockedIndex, onSelectRepo]);
-
-  if (!repo) return null;
+  }, [repo.id, onClose, allRepos, onSelectRepo]);
 
   const story = getStoryForRepo(repo.id);
   const act = getActForRepoId(repo.id);
   const lineage = getLineageForRepo(repo.id);
-  const visitedRepos = allRepos.filter((_, idx) => hasExited || idx <= maxUnlockedIndex);
 
   return (
     <div
@@ -92,60 +112,64 @@ export function RepoLabModal({
     >
       <div className="w-full max-w-5xl max-h-[92vh] ethereal-surface border border-[#2d3038] chamfer flex flex-col overflow-hidden">
         {/* Top Modal Header */}
-        <div className="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-[#2d3038] bg-[#04060b]">
-          <div className="min-w-0">
-            <div className="text-xs font-semibold text-[#a6acb9] flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3.5 border-b border-[#2d3038] bg-[#04060b]">
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-semibold text-[#a6acb9] flex flex-wrap items-center gap-2">
               <span className="text-[#eab444]">
-                Chapter {story.stationNumber} · {act.roman}
+                {story.stationNumber} · {act.roman}
               </span>
               <span aria-hidden="true">·</span>
-              <span>{repo.primaryLanguage}</span>
+              <span>{story.eraLabel}</span>
               <span aria-hidden="true">·</span>
-              <span>Updated {formatRelativeDate(repo.updatedAt)}</span>
+              <span>{repo.primaryLanguage}</span>
+              <span aria-hidden="true" className="hidden sm:inline">
+                ·
+              </span>
+              <span className="hidden sm:inline">Updated {formatRelativeDate(repo.updatedAt)}</span>
             </div>
-            <h2 id="repo-lab-title" className="text-xl sm:text-2xl font-bold text-[#f3f7fe] mt-1 truncate">
-              {repo.name} — {story.chapterTitle}
+            <h2 id="repo-lab-title" className="text-lg sm:text-2xl font-bold text-[#f3f7fe] mt-1 truncate">
+              {repo.id === 'sifr-native'
+                ? 'Cipher (sifr-native): Native Linux UI in Zig'
+                : `${repo.name}: ${story.chapterTitle}`}
             </h2>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            {hasExited && (
-              <button
-                type="button"
-                onClick={async () => {
-                  haptics.trigger('confirm');
-                  const url = `${window.location.origin}${window.location.pathname}${buildSceneSharePath(repo.id)}`;
-                  try {
-                    await navigator.clipboard.writeText(url);
-                    setCopiedLink(true);
-                    window.setTimeout(() => setCopiedLink(false), 1800);
-                  } catch {
-                    setCopiedLink(false);
-                  }
-                }}
-                className="min-h-[40px] px-3.5 py-2 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] text-[13px] font-semibold text-[#f3f7fe] inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
-              >
-                {copiedLink ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-[#40e080]" aria-hidden="true" />
-                    Copied Link
-                  </>
-                ) : (
-                  <>
-                    <Link2 className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
-                    Share Scene
-                  </>
-                )}
-              </button>
-            )}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={async () => {
+                haptics.trigger('confirm');
+                const url = `${window.location.origin}${window.location.pathname}${buildSceneSharePath(repo.id)}`;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  setCopiedLink(true);
+                  window.setTimeout(() => setCopiedLink(false), 1800);
+                } catch {
+                  setCopiedLink(false);
+                }
+              }}
+              className="hidden sm:inline-flex min-h-[40px] px-3.5 py-2 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] text-[13px] font-semibold text-[#f3f7fe] items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              {copiedLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-[#40e080]" aria-hidden="true" />
+                  Copied Link
+                </>
+              ) : (
+                <>
+                  <Link2 className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
+                  Share
+                </>
+              )}
+            </button>
             <a
               href={repo.htmlUrl}
               target="_blank"
               rel="noreferrer"
               onClick={() => haptics.trigger('tap')}
-              className="min-h-[40px] px-4 py-2 bg-[#eab444] text-[#04060b] text-[13px] font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+              className="min-h-[40px] px-3.5 sm:px-4 py-2 bg-[#eab444] text-[#04060b] text-[13px] font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
-              Source <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+              GitHub <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
             </a>
             <button
               type="button"
@@ -153,7 +177,7 @@ export function RepoLabModal({
                 haptics.trigger('tap');
                 onClose();
               }}
-              aria-label="Close engineering lab"
+              aria-label="Close repository details"
               className="min-h-[40px] min-w-[40px] flex items-center justify-center border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] text-[#f3f7fe] cursor-pointer"
             >
               <X className="w-4 h-4" aria-hidden="true" />
@@ -162,15 +186,15 @@ export function RepoLabModal({
         </div>
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto p-5 sm:p-6 space-y-5">
-          <div className="border border-[#2d3038] bg-[#0a0d13] p-4 sm:p-5 space-y-4">
+        <div className="overflow-y-auto p-4 sm:p-5 space-y-4">
+          <div className="border border-[#2d3038] bg-[#0a0d13] p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Modal lab lens">
+              <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Repository details">
                 {(
                   [
-                    { key: 'demo', label: 'Live Simulation', icon: Terminal },
+                    { key: 'demo', label: 'Simulation', icon: Terminal },
                     { key: 'bench', label: 'Benchmarks & Code', icon: Gauge },
-                    { key: 'readme', label: 'Story & README.md', icon: BookOpen },
+                    { key: 'readme', label: 'README.md', icon: BookOpen },
                   ] as const
                 ).map((item, idx, arr) => {
                   const Icon = item.icon;
@@ -197,7 +221,7 @@ export function RepoLabModal({
                         setViewMode(arr[nextIdx].key);
                         viewTabRefs.current[nextIdx]?.focus();
                       }}
-                      className={`min-h-[38px] px-3.5 py-1.5 text-[13px] font-semibold border inline-flex items-center gap-1.5 cursor-pointer ${
+                      className={`min-h-[38px] px-3 py-1.5 text-[13px] font-semibold border inline-flex items-center gap-1.5 cursor-pointer ${
                         viewMode === item.key
                           ? 'border-[#eab444] bg-[#eab444] text-[#04060b] font-bold'
                           : 'border-[#2d3038] bg-[#04060b] text-[#e4e8f1]'
@@ -221,7 +245,9 @@ export function RepoLabModal({
             )}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-5 items-stretch">
+          <ContributionTimeline repo={repo} commitDates={liveDetail.commitDates} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-5 items-stretch">
             <div className="border border-[#2d3038] bg-[#04060b] flex flex-col">
               <ProjectPhysicsIllustration schematic={repo.schematic} heightClass="h-40" />
               <div className="p-5 space-y-3 flex-1">
@@ -232,9 +258,7 @@ export function RepoLabModal({
 
             <div className="border border-[#2d3038] bg-[#04060b] p-5 flex flex-col justify-between space-y-4">
               <div>
-                <div className="text-xs font-bold text-[#a6acb9] mb-3">
-                  Architecture Highlights
-                </div>
+                <div className="text-xs font-bold text-[#a6acb9] mb-3">Specs</div>
                 <div className="divide-y divide-[#2d3038]">
                   {repo.highlights.map((h) => (
                     <div key={h.label} className="py-2 flex items-baseline justify-between gap-3">
@@ -279,25 +303,22 @@ export function RepoLabModal({
               {copiedBuild ? (
                 <>
                   <Check className="w-3 h-3 text-[#40e080]" aria-hidden="true" />
-                  <span className="text-[#40e080]">Copied CLI</span>
+                  <span className="text-[#40e080]">Copied</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-3 h-3 text-[#eab444]" aria-hidden="true" />
-                  <span>Clone &amp; Build</span>
+                  <span>Copy Command</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Bottom Switcher Bar (shows only chapters already visited — never locked buttons) */}
-        {visitedRepos.length > 1 && (
-          <div className="px-5 sm:px-6 py-3 border-t border-[#2d3038] bg-[#04060b] flex items-center gap-1.5 overflow-x-auto sm:overflow-visible sm:flex-wrap no-scrollbar">
-            <span className="text-xs text-[#9ca2af] whitespace-nowrap shrink-0 mr-2">
-              {hasExited ? 'All Chapters:' : 'Visited Chapters:'}
-            </span>
-            {visitedRepos.map((item) => (
+        {/* Bottom Switcher Bar */}
+        {allRepos.length > 1 && (
+          <div className="px-4 sm:px-6 py-3 border-t border-[#2d3038] bg-[#04060b] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {allRepos.map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -305,7 +326,7 @@ export function RepoLabModal({
                   haptics.trigger('detent');
                   onSelectRepo(item);
                 }}
-                className={`min-h-[32px] px-2.5 py-1 text-xs font-medium border whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`min-h-[30px] px-2.5 py-1 text-xs font-medium border whitespace-nowrap shrink-0 cursor-pointer ${
                   item.id === repo.id
                     ? 'border-[#eab444] bg-[#eab444] text-[#04060b] font-bold'
                     : 'border-[#2d3038] bg-[#0a0d13] text-[#d2d7e2] hover:border-[#eab444]'

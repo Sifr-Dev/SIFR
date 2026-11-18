@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" fill="none" role="img" aria-label="Chapter geometric plate part2">
+  <defs>
+    <radialGradient id="glow-part2" cx="50%" cy="50%" r="54%">
+      <stop offset="0%" stop-color="#eab444" stop-opacity="0.16" />
+      <stop offset="55%" stop-color="#7c879c" stop-opacity="0.06" />
+      <stop offset="100%" stop-color="#04060b" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="fade-part2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f3f7fe" stop-opacity="0.04" />
+      <stop offset="50%" stop-color="#eab444" stop-opacity="0.28" />
+      <stop offset="100%" stop-color="#f3f7fe" stop-opacity="0.04" />
+    </linearGradient>
+    
+  </defs>
+  <ellipse cx="600" cy="400" rx="460" ry="300" fill="url(#glow-part2)" />
+  <path d="M127,150 L189,164.25 L251,173.84 L313,175.63 L375,169.04 L437,156.22 L499,141.37 L561,129.34 L623,124.07 L685,127.28 L747,137.92 L809,152.51 L871,166.28 L933,174.73" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <path d="M141,212.12 L203,224.97 L265,231.61 L327,229.88 L389,220.34 L451,206.11 L513,191.84 L575,182.21 L637,180.35 L699,186.89 L761,199.67 L823,214.53 L885,226.59 L947,231.92" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <path d="M155,273.89 L217,284.62 L279,287.95 L341,282.79 L403,270.83 L465,255.99 L527,243.11 L589,236.41 L651,238.08 L713,247.57 L775,261.78 L837,276.07 L899,285.75 L961,287.66" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <path d="M169,335 L231,343 L293,342.83 L355,334.53 L417,320.83 L479,306.21 L541,295.44 L603,292.05 L665,297.15 L727,309.06 L789,323.91 L851,336.82 L913,343.57 L975,341.96" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <path d="M183,395.15 L245,399.98 L307,396.31 L369,385.35 L431,370.67 L493,357.09 L555,349.03 L617,349.14 L679,357.38 L741,371.06 L803,385.7 L865,396.51 L927,399.96 L989,394.92" stroke="#eab444" stroke-opacity="0.42" stroke-width="1.5" />
+  <path d="M197,454.11 L259,455.5 L321,448.54 L383,435.53 L445,420.7 L507,408.91 L569,404.03 L631,407.63 L693,418.56 L755,433.22 L817,446.83 L879,454.94 L941,454.89 L1003,446.7" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <path d="M211,511.72 L273,509.59 L335,499.74 L397,485.39 L459,471.25 L521,461.93 L583,460.48 L645,467.38 L707,480.37 L769,495.2 L831,507.02 L893,511.97 L955,508.42 L1017,497.54" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <path d="M225,567.89 L287,562.35 L349,550.16 L411,535.29 L473,522.62 L535,516.29 L597,518.37 L659,528.17 L721,542.5 L783,556.66 L845,566.03 L907,567.54 L969,560.7 L1031,547.74" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <path d="M239,622.6 L301,613.97 L363,600.12 L425,585.57 L487,575.09 L549,572.1 L611,577.58 L673,589.74 L735,604.6 L797,617.3 L859,623.69 L921,621.68 L983,611.92 L1045,597.61" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <path d="M127,150 L141,212.12 L155,273.89 L169,335 L183,395.15 L197,454.11 L211,511.72 L225,567.89 L239,622.6" stroke="#eab444" stroke-opacity="0.25" stroke-width="1" />
+  <path d="M189,164.25 L203,224.97 L217,284.62 L231,343 L245,399.98 L259,455.5 L273,509.59 L287,562.35 L301,613.97" stroke="#7a8499" stroke-opacity="0.12" stroke-width="1" />
+  <path d="M251,173.84 L265,231.61 L279,287.95 L293,342.83 L307,396.31 L321,448.54 L335,499.74 L349,550.16 L363,600.12" stroke="#7a8499" stroke-opacity="0.12" stroke-width="1" />
+  <path d="M313,175.63 L327,229.88 L341,282.79 L355,334.53 L369,385.35 L383,435.53 L397,485.39 L411,535.29 L425,585.57" stroke="#7a8499" stroke-opacity="0.12" stroke-width="1" />
+  <path d="M375,169.04 L389,220.34 L403,270.83 L417,320.83 L431,370.67 L445,420.7 L459,471.25 L473,522.62 L487,575.09" stroke="#eab444" stroke-opacity="0.25" stroke-width="1" />
+  <path d="M437,156.22 L451,206.11 L465,255.99 L479,306.21 L493,357.09 L507,408.91 L521,461.93 L535,516.29 L549,572.1" stroke="#7a8499" stroke-opacity="0.12" stroke-width="1" />
+  <path d="M499,141.37 L513,191.84 L527,243.11 L541,295.44 L555,349.03 L569,404.03 L583,460.48 L597,518.37 L611,577.58" stroke="#7a8499" stroke-opacity="0.12" stroke-width="1" />
+  <path d="M561,129.34 L575,182.21 L589,236.41 L603,292.05 L617,349.14 L631,407.63 L645,467.38 L659,528.17 L673,589.74" stroke="#7a8499" stroke-opacity="0.12" stroke-width="1" />
+  <path d="M623,124.07 L637,180.35 L651,238.08 L665,297.15 L679,357.38 L693,418.56 L707,480.37 L721,542.5 L735,604.6" stroke="#eab444" stroke-opacity="0.25" stroke-width="1" />
+  <path d="M685,127.28 L699,186.89 L713,247.57 L727,309.06 L741,371.06 L755,433.22 L769,495.2 L783,556.66 L797,617.3" stroke="#7a8499" stroke-opacity="0.12" stroke-width="1" />
+  <path d="M747,137.92 L761,199.67 L775,261.78 L789,323.91 L803,385.7 L817,446.83 L831,507.02 L845,566.03 L859,623.69" stroke="#7a8499" stroke-opacity="0.12" stroke-width="1" />
+  <path d="M809,152.51 L823,214.53 L837,276.07 L851,336.82 L865,396.51 L879,454.94 L893,511.97 L907,567.54 L921,621.68" stroke="#7a8499" stroke-opacity="0.12" stroke-width="1" />
+  <path d="M871,166.28 L885,226.59 L899,285.75 L913,343.57 L927,399.96 L941,454.89 L955,508.42 L969,560.7 L983,611.92" stroke="#eab444" stroke-opacity="0.25" stroke-width="1" />
+  <path d="M933,174.73 L947,231.92 L961,287.66 L975,341.96 L989,394.92 L1003,446.7 L1017,497.54 L1031,547.74 L1045,597.61" stroke="#7a8499" stroke-opacity="0.12" stroke-width="1" />
+  <rect x="338" y="279.79" width="6" height="6" stroke="#eab444" stroke-opacity="0.55" fill="#04060b" />
+  <rect x="524" y="240.11" width="6" height="6" stroke="#eab444" stroke-opacity="0.55" fill="#04060b" />
+  <rect x="710" y="244.57" width="6" height="6" stroke="#eab444" stroke-opacity="0.55" fill="#04060b" />
+  <rect x="366" y="382.35" width="6" height="6" stroke="#eab444" stroke-opacity="0.55" fill="#04060b" />
+  <rect x="552" y="346.03" width="6" height="6" stroke="#eab444" stroke-opacity="0.55" fill="#04060b" />
+  <rect x="738" y="368.06" width="6" height="6" stroke="#eab444" stroke-opacity="0.55" fill="#04060b" />
+  <rect x="394" y="482.39" width="6" height="6" stroke="#eab444" stroke-opacity="0.55" fill="#04060b" />
+  <rect x="580" y="457.48" width="6" height="6" stroke="#eab444" stroke-opacity="0.55" fill="#04060b" />
+  <rect x="766" y="492.2" width="6" height="6" stroke="#eab444" stroke-opacity="0.55" fill="#04060b" />
+</svg>

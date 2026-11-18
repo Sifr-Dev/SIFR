@@ -42,6 +42,7 @@ interface OverviewCacheEntry {
 interface RepoDetailCacheEntry {
   expiresAt: number;
   commit: { sha: string; message: string; date: string; author: string } | null;
+  commitDates: string[];
   rawReadme: string | null;
 }
 
@@ -65,7 +66,7 @@ function describeEvent(type: string, repoShort: string): string {
     case 'PushEvent':
       return `Committed & pushed updates to ${repoShort}`;
     case 'PullRequestEvent':
-      return `Merged engineering pull request in ${repoShort}`;
+      return `Merged pull request in ${repoShort}`;
     case 'CreateEvent':
       return `Initialized branch or repository ${repoShort}`;
     case 'PublicEvent':
@@ -166,6 +167,7 @@ async function fetchOverviewPayload(): Promise<OverviewCacheEntry> {
             forks: remote.forks_count ?? local.forks,
             primaryLanguage: remote.language || local.primaryLanguage,
             updatedAt: latestTs || local.updatedAt,
+            createdAt: remote.created_at || local.createdAt,
             htmlUrl: remote.html_url || local.htmlUrl,
           };
         });
@@ -222,6 +224,7 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
   const emptyEntry: RepoDetailCacheEntry = {
     expiresAt: now + CACHE_TTL_MS,
     commit: null,
+    commitDates: [],
     rawReadme: null,
   };
 
@@ -233,7 +236,7 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
   try {
     const headers = githubHeaders();
     const [commitRes, contentsRes] = await Promise.all([
-      fetch(`https://api.github.com/repos/mohamedsalahi/${cleanName}/commits?per_page=1`, { headers }),
+      fetch(`https://api.github.com/repos/mohamedsalahi/${cleanName}/commits?per_page=100`, { headers }),
       fetch(`https://api.github.com/repos/mohamedsalahi/${cleanName}/contents`, { headers }),
     ]);
 
@@ -250,6 +253,7 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
     }
 
     let commit: RepoDetailCacheEntry['commit'] = null;
+    const commitDates: string[] = [];
     let rawReadme: string | null = null;
 
     if (commitRes.ok) {
@@ -258,16 +262,23 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
         commit?: {
           message?: string;
           author?: { name?: string; date?: string };
+          committer?: { date?: string };
         };
       }>;
-      const top = commits[0];
-      if (top?.sha) {
-        commit = {
-          sha: top.sha.slice(0, 7),
-          message: (top.commit?.message ?? 'Updated repository').split('\n')[0].trim(),
-          date: top.commit?.author?.date ?? '',
-          author: top.commit?.author?.name ?? 'mohamedsalahi',
-        };
+      if (Array.isArray(commits)) {
+        for (const item of commits) {
+          const dt = item.commit?.author?.date ?? item.commit?.committer?.date;
+          if (dt) commitDates.push(dt);
+        }
+        const top = commits[0];
+        if (top?.sha) {
+          commit = {
+            sha: top.sha.slice(0, 7),
+            message: (top.commit?.message ?? 'Updated repository').split('\n')[0].trim(),
+            date: top.commit?.author?.date ?? '',
+            author: top.commit?.author?.name ?? 'mohamedsalahi',
+          };
+        }
       }
     }
 
@@ -293,6 +304,7 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
     const entry: RepoDetailCacheEntry = {
       expiresAt: now + CACHE_TTL_MS,
       commit,
+      commitDates,
       rawReadme,
     };
     repoDetailCache.set(key, entry);
@@ -324,6 +336,7 @@ async function startServer() {
     const detail = await fetchRepoDetailPayload(req.params.name);
     res.json({
       commit: detail.commit,
+      commitDates: detail.commitDates,
       rawReadme: detail.rawReadme,
       cached: true,
     });
@@ -415,7 +428,7 @@ async function startServer() {
             from: 'SIFR Signal <onboarding@resend.dev>',
             to: [process.env.SIGNAL_TO_EMAIL?.trim() || SIFR_DIRECT_EMAIL],
             reply_to: cleanEmail,
-            subject: `[SIFR Signal ${id}] ${cleanTopic} — ${cleanName}`,
+            subject: `[SIFR Signal ${id}] ${cleanTopic} - ${cleanName}`,
             text: `Receipt: ${id}\nTimestamp: ${timestamp}\nFrom: ${cleanName} <${cleanEmail}>\nScope: ${cleanTopic}\n\n${cleanMessage}`,
             html: htmlBody,
           }),

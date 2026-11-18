@@ -148,7 +148,7 @@ describe('chapter-aware OG metadata injection', () => {
     const meta = resolveSceneMetadata('verrev');
     assert.equal(meta.matchedRepoId, 'verrev');
     assert.ok(meta.title.includes('verrev'));
-    assert.ok(meta.title.includes('Chapter 11'));
+    assert.ok(meta.title.includes('Part 13'));
 
     const injected = injectOgMetaIntoHtml(html, meta);
     assert.ok(injected.includes(`<title>${meta.title}</title>`));

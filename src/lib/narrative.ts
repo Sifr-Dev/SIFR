@@ -10,42 +10,62 @@ export interface ActDefinition {
 }
 
 /**
- * Canonical 11-station Disneyland-style architectural progression:
- * From bare C heap bytes -> Linux /proc & Go concurrency -> ML/Hexagonal systems ->
- * Native Rust telemetry & GPU kernels -> Zig Wayland/Vulkan & Rust Post-Quantum OS.
+ * Conceptual story progression across all 20 repositories:
+ * moving from application architecture and raw sockets, through ML math and GPU kernels,
+ * down into heap memory, kernel telemetry, and cryptography, and finally building zero-dependency tools and native UI.
  */
 export const CANONICAL_ACTS: ActDefinition[] = [
   {
     id: 'act-1',
-    roman: 'Act I',
-    title: 'Metal & Memory',
-    subtitle: 'Earning the machine one byte, one socket, and one lock at a time.',
-    timeframe: 'June – Nov 2026',
-    stationIds: ['malloc_allocator', 'sysmon_daemon', 'redis_clone', 'task_manager_cli'],
+    roman: 'Part I',
+    title: 'First Systems',
+    subtitle: 'Starting from layered backends, concurrent stores, raw TCP sockets, and measuring latency.',
+    timeframe: 'Web and Sockets',
+    stationIds: [
+      'GO_DB',
+      'task_manager_cli',
+      'redis_clone',
+      'sifr-serve',
+      'sifr-probe',
+    ],
   },
   {
     id: 'act-2',
-    roman: 'Act II',
-    title: 'Boundaries & Signal',
-    subtitle: 'Isolating domain truth and distilling heavy ML into pure arithmetic.',
-    timeframe: 'Summer – Nov 2026',
-    stationIds: ['GO_DB', 'churn_analytics_engine'],
+    roman: 'Part II',
+    title: 'Math to Silicon',
+    subtitle: 'Moving from 300-byte Python inference to desktop vision models and custom GPU kernels.',
+    timeframe: 'Models and Metal',
+    stationIds: ['churn_analytics_engine', 'GreenLens', 'sifr-ml-systems'],
   },
   {
     id: 'act-3',
-    roman: 'Act III',
-    title: 'Vision, Flight & Silicon',
-    subtitle: 'Zero child forks on CPU telemetry; breaking beneath PyTorch into Triton & XLA.',
-    timeframe: 'Oct – Nov 2026',
-    stationIds: ['GreenLens', 'tachyon-fetch', 'sifr-ml-systems'],
+    roman: 'Part III',
+    title: 'Memory and Trust',
+    subtitle: 'Looking underneath abstractions: heap blocks, Linux /proc, SHA-256, and capability security.',
+    timeframe: 'Kernel and Crypto',
+    stationIds: [
+      'malloc_allocator',
+      'sysmon_daemon',
+      'tachyon-fetch',
+      'sifr-crypt',
+      'verrev',
+    ],
   },
   {
     id: 'act-4',
-    roman: 'Act IV',
-    title: 'Built From Zero',
-    subtitle: 'Zig Wayland/Vulkan compute, a post-quantum Rust OS, and the SIFR cipher canvas.',
-    timeframe: 'Nov 2026 Capstone',
-    stationIds: ['sifr-native', 'verrev', 'SIFR'],
+    roman: 'Part IV',
+    title: 'Crafted From Zero',
+    subtitle: 'Zero-dependency Unix tools, a Zig Wayland/Vulkan UI toolkit, native apps, and this canvas.',
+    timeframe: 'Tools and Native UI',
+    stationIds: [
+      'sifr-query',
+      'sifr-md',
+      'sifr-inflate',
+      'sifr-diff',
+      'sifr-native',
+      'sifr-apps',
+      'SIFR',
+    ],
   },
 ];
 
@@ -183,7 +203,7 @@ export function getRideProgressPercent(
   return Math.round(((state.maxUnlockedIndex + 1) / total) * 100);
 }
 
-export const RIDE_STORAGE_KEY = 'sifr.ride.v1';
+export const RIDE_STORAGE_KEY = 'sifr.ride.v2';
 
 export function serializeRideState(state: RideState): string {
   return JSON.stringify({
@@ -245,4 +265,3 @@ export function resolveSceneParam<T extends { id: string }>(
 export function buildSceneSharePath(repoId: string): string {
   return `?scene=${encodeURIComponent(repoId)}`;
 }
-

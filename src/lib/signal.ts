@@ -43,12 +43,12 @@ export function validateSignalPayload(payload: SignalPayload): SignalValidationR
 }
 
 export function buildSignalMailto(payload: SignalPayload): string {
-  const subject = encodeURIComponent(`[SIFR Signal] ${payload.topic} — ${payload.senderName.trim()}`);
+  const subject = encodeURIComponent(`[SIFR Signal] ${payload.topic} - ${payload.senderName.trim()}`);
   const body = encodeURIComponent(
     `From: ${payload.senderName.trim()} (${payload.senderEmail.trim()})\n` +
       `Scope: ${payload.topic}\n\n` +
       `${payload.message.trim()}\n\n` +
-      `— Dispatched from SIFR Systems Exhibition`
+      `Sent from SIFR portfolio`
   );
   return `mailto:${SIFR_DIRECT_EMAIL}?subject=${subject}&body=${body}`;
 }

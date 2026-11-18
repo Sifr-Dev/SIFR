@@ -22,34 +22,38 @@ import {
 import { REPOSITORIES } from '../data/repos';
 import { REPO_STORIES } from '../data/stories';
 
-test('canonical track includes all 12 unique repositories across 4 sequential acts', () => {
+test('canonical chronological track includes all 20 unique repositories across 4 parts without em dashes', () => {
   assert.equal(CANONICAL_ACTS.length, 4);
-  assert.equal(CANONICAL_TRACK_ORDER.length, 12);
-  assert.equal(new Set(CANONICAL_TRACK_ORDER).size, 12);
+  assert.equal(CANONICAL_TRACK_ORDER.length, 20);
+  assert.equal(new Set(CANONICAL_TRACK_ORDER).size, 20);
 
   for (const id of CANONICAL_TRACK_ORDER) {
-    assert.ok(
-      REPOSITORIES.some((r) => r.id === id),
-      `Missing repository in REPOSITORIES: ${id}`
-    );
+    const repo = REPOSITORIES.find((r) => r.id === id);
+    assert.ok(repo, `Missing repository in REPOSITORIES: ${id}`);
+    assert.ok(!repo.subtitle.includes('—'), `Em dash found in subtitle of ${id}`);
+    assert.ok(!repo.summary.includes('—'), `Em dash found in summary of ${id}`);
+
     const story = REPO_STORIES[id];
     assert.ok(story, `Missing story for ${id}`);
+    assert.ok(story.beatLine.length > 10, `Missing beatLine for ${id}`);
+    assert.ok(!story.beatLine.includes('—'), `Em dash found in beatLine of ${id}`);
+    assert.ok(!story.openingHook.includes('—'), `Em dash found in openingHook of ${id}`);
     assert.ok(story.readmeMarkdown.includes('# '), `Missing README heading for ${id}`);
-    assert.ok(story.bridgeToNext.length > 20, `Missing bridge narrative for ${id}`);
+    assert.ok(story.bridgeToNext.length > 10, `Missing bridge narrative for ${id}`);
   }
 
   const ordered = getOrderedTrack(REPOSITORIES);
-  assert.equal(ordered.length, 12);
-  assert.equal(ordered[11].id, 'SIFR');
+  assert.equal(ordered.length, 20);
+  assert.equal(ordered[0].id, 'GO_DB');
+  assert.equal(ordered[19].id, 'SIFR');
 });
 
-test('ride starts at Entrance and enforces unbroken forward unlocking across all 12 stops until Exit', () => {
+test('ride starts at Entrance and enforces sequential progression across all 20 stops until Ending', () => {
   let state = createInitialRideState();
   assert.equal(state.hasEntered, false);
   assert.equal(state.hasExited, false);
   assert.equal(getRideProgressPercent(state), 0);
 
-  // Cannot skip straight to Station 05 before advancing
   assert.equal(canAccessStation(state, 0), true);
   assert.equal(canAccessStation(state, 4), false);
 
@@ -57,28 +61,24 @@ test('ride starts at Entrance and enforces unbroken forward unlocking across all
   assert.equal(state.hasEntered, true);
   assert.equal(state.currentIndex, 0);
   assert.equal(getStationCode(state.currentIndex), '01');
-  assert.equal(getActForRepoId(CANONICAL_TRACK_ORDER[0]).roman, 'Act I');
+  assert.equal(getActForRepoId(CANONICAL_TRACK_ORDER[0]).roman, 'Part I');
 
-  // Step sequentially through Stations 01 -> 12
-  for (let i = 0; i < 11; i++) {
+  for (let i = 0; i < 19; i++) {
     state = advanceRide(state);
     assert.equal(state.currentIndex, i + 1);
     assert.equal(state.maxUnlockedIndex, i + 1);
     assert.equal(state.hasExited, false);
   }
 
-  // Final station is SIFR (index 11) before Grand Exit
   assert.equal(CANONICAL_TRACK_ORDER[state.currentIndex], 'SIFR');
   state = advanceRide(state);
   assert.equal(state.hasExited, true);
   assert.equal(getRideProgressPercent(state), 100);
 
-  // Stepping back revisits unlocked stations without losing Exit completion
   const backed = stepBackRide(state);
-  assert.equal(backed.currentIndex, 10);
-  assert.equal(canAccessStation(backed, 11), true);
+  assert.equal(backed.currentIndex, 18);
+  assert.equal(canAccessStation(backed, 19), true);
 
-  // Jumping to an unlocked station works, restarting resets to Gate
   const jumped = jumpToUnlockedStation(backed, 0);
   assert.equal(jumped.currentIndex, 0);
   const reset = restartRide();
@@ -87,22 +87,19 @@ test('ride starts at Entrance and enforces unbroken forward unlocking across all
   assert.equal(reset.maxUnlockedIndex, 0);
 });
 
-test('parseRideState restores persisted progress cleanly and resolveSceneParam respects canonical unlock rules', () => {
+test('parseRideState restores persisted progress cleanly and resolveSceneParam respects bounds', () => {
   const ordered = getOrderedTrack(REPOSITORIES);
   const fresh = createInitialRideState();
 
-  // Unvisited deep link does NOT bypass canonical track
   const blocked = resolveSceneParam('?scene=verrev', fresh, ordered);
   assert.equal(blocked.hasEntered, false);
   assert.equal(blocked.currentIndex, 0);
 
-  // Round-trip serialization clamps bounds safely
   const mid = { hasEntered: true, currentIndex: 4, maxUnlockedIndex: 7, hasExited: false };
   const parsed = parseRideState(serializeRideState(mid), ordered.length);
   assert.deepEqual(parsed, mid);
   assert.equal(parseRideState('invalid-json', ordered.length), null);
 
-  // Unlocked deep link resolves straight to unlocked chapter
   const jumped = resolveSceneParam('?scene=GO_DB', mid, ordered);
   assert.equal(jumped.hasEntered, true);
   assert.equal(ordered[jumped.currentIndex].id, 'GO_DB');

@@ -11,12 +11,16 @@ import {
   type AngularSpringState,
 } from '../lib/cipher';
 import { haptics } from '../lib/haptics';
+import { ambientSoundscape } from '../lib/ambientSoundscape';
 
 interface PhysicsCipherCanvasProps {
   shift: number;
   onShiftChange: (nextShift: number) => void;
   compact?: boolean;
   paused?: boolean;
+  minimal?: boolean;
+  scrollProgress?: number;
+  scrollProgressRef?: React.RefObject<number>;
 }
 
 interface PolarNode {
@@ -40,6 +44,9 @@ export function PhysicsCipherCanvas({
   onShiftChange,
   compact = false,
   paused = false,
+  minimal = false,
+  scrollProgress,
+  scrollProgressRef,
 }: PhysicsCipherCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wakeRef = useRef<(() => void) | null>(null);
@@ -491,6 +498,82 @@ export function PhysicsCipherCanvas({
 
   const decoded = decodeRingAtShift(shift);
 
+  useEffect(() => {
+    if (!minimal || scrollProgress === undefined) return;
+    if (!dragRef.current.active) {
+      springRef.current.targetAngleDeg = shiftToAngle(shift) + scrollProgress * 120;
+      wakeRef.current?.();
+    }
+  }, [minimal, scrollProgress, shift]);
+
+  useEffect(() => {
+    if (!minimal || !scrollProgressRef) return;
+    const onScrollSync = () => {
+      if (!dragRef.current.active) {
+        springRef.current.targetAngleDeg = shiftToAngle(shift) + (scrollProgressRef.current ?? 0) * 120;
+        wakeRef.current?.();
+      }
+    };
+    window.addEventListener('sifr-scroll-sync', onScrollSync, { passive: true });
+    return () => window.removeEventListener('sifr-scroll-sync', onScrollSync);
+  }, [minimal, scrollProgressRef, shift]);
+
+  if (minimal) {
+    return (
+      <div className="flex flex-col items-center w-full">
+        <div className="relative w-full aspect-square max-w-[410px] border border-[#2d3038] hover:border-[#eab444]/60 transition-colors duration-200 bg-[#0a0d13] chamfer overflow-hidden">
+          <canvas
+            ref={canvasRef}
+            data-testid="cipher-physics-canvas"
+            data-shift={shift}
+            aria-label="SIFR 24-cell cipher dial"
+            onPointerMove={(e) => {
+              const canvas = canvasRef.current;
+              if (!canvas) return;
+              const rect = canvas.getBoundingClientRect();
+              const lx = e.clientX - rect.left;
+              const ly = e.clientY - rect.top;
+              pointerRef.current = {
+                x: lx,
+                y: ly,
+                active: true,
+              };
+              const angleRad = Math.atan2(ly - rect.height * 0.5, lx - rect.width * 0.5);
+              ambientSoundscape.playScrubTick((angleRad + Math.PI) / (Math.PI * 2));
+              wakeRef.current?.();
+            }}
+            onPointerDown={(e) => {
+              const canvas = canvasRef.current;
+              if (!canvas) return;
+              const rect = canvas.getBoundingClientRect();
+              pointerRef.current = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top,
+                active: true,
+              };
+              wavesRef.current.push({
+                radius: 16,
+                alpha: 0.78,
+                color: '#eab444',
+              });
+              ambientSoundscape.playPanelShimmer(shift, 'touch');
+              wakeRef.current?.();
+            }}
+            onPointerLeave={() => {
+              pointerRef.current.active = false;
+              wakeRef.current?.();
+            }}
+            onPointerCancel={() => {
+              pointerRef.current.active = false;
+              wakeRef.current?.();
+            }}
+            className="w-full h-full block select-none touch-pan-x touch-pan-y cursor-crosshair"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center w-full">
       <div className={`relative w-full aspect-square ${compact ? 'max-w-[440px]' : 'max-w-[392px]'} border border-[#2d3038] bg-[#0a0d13] chamfer overflow-hidden`}>
@@ -523,72 +606,72 @@ export function PhysicsCipherCanvas({
 
       {/* Live Cipher Controls + Bitstream Readout */}
       <div className={`w-full ${compact ? 'max-w-[440px]' : 'max-w-[392px]'} mt-4 border border-[#2d3038] bg-[#0a0d13] p-4`}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const next = normalizeShift(shift - 1);
-                haptics.trigger(next === 0 ? 'snapZero' : 'detent');
-                onShiftChange(next);
-              }}
-              className="min-h-[40px] px-3 py-2 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] text-[#f3f7fe] font-mobilis text-xs uppercase tracking-wider transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-              aria-label="Step cipher disk backward 15 degrees"
-            >
-              -15°
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const next = normalizeShift(shift + 1);
-                haptics.trigger(next === 0 ? 'snapZero' : 'detent');
-                onShiftChange(next);
-              }}
-              className="min-h-[40px] px-3 py-2 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] text-[#f3f7fe] font-mobilis text-xs uppercase tracking-wider transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-              aria-label="Step cipher disk forward one cell"
-            >
-              Step +15°
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                haptics.trigger('snapZero');
-                onShiftChange(0);
-              }}
-              className={`min-h-[40px] px-3 py-2 font-mobilis text-xs uppercase tracking-wider transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                decoded.isZeroShift
-                  ? 'bg-[#eab444] text-[#04060b] font-bold'
-                  : 'border border-[#eab444] text-[#eab444] hover:bg-[#eab444] hover:text-[#04060b]'
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = normalizeShift(shift - 1);
+                  haptics.trigger(next === 0 ? 'snapZero' : 'detent');
+                  onShiftChange(next);
+                }}
+                className="min-h-[40px] px-3 py-2 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] text-[#f3f7fe] font-mobilis text-xs uppercase tracking-wider transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                aria-label="Step cipher disk backward 15 degrees"
+              >
+                -15°
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = normalizeShift(shift + 1);
+                  haptics.trigger(next === 0 ? 'snapZero' : 'detent');
+                  onShiftChange(next);
+                }}
+                className="min-h-[40px] px-3 py-2 border border-[#2d3038] bg-[#171b21] hover:border-[#eab444] text-[#f3f7fe] font-mobilis text-xs uppercase tracking-wider transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                aria-label="Step cipher disk forward one cell"
+              >
+                Step +15°
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  haptics.trigger('snapZero');
+                  onShiftChange(0);
+                }}
+                className={`min-h-[40px] px-3 py-2 font-mobilis text-xs uppercase tracking-wider transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                  decoded.isZeroShift
+                    ? 'bg-[#eab444] text-[#04060b] font-bold'
+                    : 'border border-[#eab444] text-[#eab444] hover:bg-[#eab444] hover:text-[#04060b]'
+                }`}
+              >
+                Shift 0
+              </button>
+            </div>
+            <span className="font-mobilis text-xs text-[#9498a1]">
+              shift <span className="text-[#f3f7fe] font-bold">{decoded.shift}</span>
+            </span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-[#2d3038] flex items-baseline justify-between gap-4">
+            <div
+              data-testid="cipher-decoded-word"
+              className={`font-mobilis text-2xl font-bold tracking-[0.22em] ${
+                decoded.isZeroShift ? 'text-[#eab444]' : 'text-[#fc5855]'
               }`}
             >
-              Shift 0
-            </button>
+              {decoded.word}
+            </div>
+            <div className="font-mobilis text-[11px] text-[#9498a1] whitespace-nowrap">
+              {decoded.isZeroShift ? 'aligned · ok' : 'garble · shift ≠ 0'}
+            </div>
           </div>
-          <span className="font-mobilis text-xs text-[#9498a1]">
-            shift <span className="text-[#f3f7fe] font-bold">{decoded.shift}</span>
-          </span>
-        </div>
-
-        <div className="mt-3 pt-3 border-t border-[#2d3038] flex items-baseline justify-between gap-4">
-          <div
-            data-testid="cipher-decoded-word"
-            className={`font-mobilis text-2xl font-bold tracking-[0.22em] ${
-              decoded.isZeroShift ? 'text-[#eab444]' : 'text-[#fc5855]'
-            }`}
-          >
-            {decoded.word}
+          <div className="mt-2 font-mobilis text-[11px] text-[#9498a1] tracking-wider flex flex-wrap gap-x-2">
+            {decoded.binaryGroups.map((grp, idx) => (
+              <span key={idx} className={idx === 0 && decoded.isZeroShift ? 'text-[#eab444]' : ''}>
+                {grp}
+              </span>
+            ))}
           </div>
-          <div className="font-mobilis text-[11px] text-[#9498a1] whitespace-nowrap">
-            {decoded.isZeroShift ? 'aligned · ok' : 'garble · shift ≠ 0'}
-          </div>
-        </div>
-        <div className="mt-2 font-mobilis text-[11px] text-[#9498a1] tracking-wider flex flex-wrap gap-x-2">
-          {decoded.binaryGroups.map((grp, idx) => (
-            <span key={idx} className={idx === 0 && decoded.isZeroShift ? 'text-[#eab444]' : ''}>
-              {grp}
-            </span>
-          ))}
-        </div>
       </div>
     </div>
   );

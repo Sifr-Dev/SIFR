@@ -9,6 +9,7 @@ export interface LiveRepoCommit {
 
 export interface LiveRepoDetail {
   commit: LiveRepoCommit | null;
+  commitDates: string[];
   rawReadme: string | null;
   status: 'idle' | 'loading' | 'ready';
 }
@@ -21,6 +22,7 @@ export function useRepoLiveDetail(repoName: string, owner = 'mohamedsalahi'): Li
     () =>
       detailCache.get(cacheKey) ?? {
         commit: null,
+        commitDates: [],
         rawReadme: null,
         status: 'loading',
       }
@@ -36,10 +38,11 @@ export function useRepoLiveDetail(repoName: string, owner = 'mohamedsalahi'): Li
     let cancelled = false;
     const controller = new AbortController();
 
-    setDetail({ commit: null, rawReadme: null, status: 'loading' });
+    setDetail({ commit: null, commitDates: [], rawReadme: null, status: 'loading' });
 
     async function fetchDetail() {
       let commit: LiveRepoCommit | null = null;
+      let commitDates: string[] = [];
       let rawReadme: string | null = null;
 
       try {
@@ -49,18 +52,21 @@ export function useRepoLiveDetail(repoName: string, owner = 'mohamedsalahi'): Li
         if (res.ok) {
           const data = (await res.json()) as {
             commit?: LiveRepoCommit | null;
+            commitDates?: string[];
             rawReadme?: string | null;
           };
           commit = data.commit ?? null;
+          commitDates = Array.isArray(data.commitDates) ? data.commitDates : [];
           rawReadme = data.rawReadme ?? null;
         }
       } catch {
-        // Offline or server unavailable — retain null cleanly and show curated Editorial Blueprint
+        // Offline or server unavailable: keep empty commitDates and show curated blueprint
       }
 
       if (cancelled) return;
       const resolved: LiveRepoDetail = {
         commit,
+        commitDates,
         rawReadme,
         status: 'ready',
       };

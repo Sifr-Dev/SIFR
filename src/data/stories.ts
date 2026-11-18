@@ -1,7 +1,9 @@
 export interface RepoStorySpec {
   repoId: string;
   stationNumber: string;
+  eraLabel: string;
   chapterTitle: string;
+  beatLine: string;
   tagline: string;
   openingHook: string;
   engineeringNarrative: string;
@@ -16,564 +18,578 @@ export interface RepoStorySpec {
 }
 
 export const REPO_STORIES: Record<string, RepoStorySpec> = {
-  malloc_allocator: {
-    repoId: 'malloc_allocator',
+  GO_DB: {
+    repoId: 'GO_DB',
     stationNumber: '01',
-    chapterTitle: 'Before You Own a System, Own a Single Byte',
-    tagline: 'Chapter 01 · POSIX sbrk() & Free-List Coalescing in C99',
+    eraLabel: 'Layered Backend',
+    chapterTitle: 'Clean Architecture API',
+    beatLine: 'Started with a strict 4-layer Go backend, sqlc queries, Redis rate limits, and a React client.',
+    tagline: 'Part I · Go, PostgreSQL, Redis, TypeScript',
     openingHook:
-      'Every high-level framework begins by calling malloc() and assuming memory simply appears. The SIFR chronicle starts at Station 01 by tearing away that illusion.',
+      'A full-stack backend and frontend built with strict boundary rules between HTTP transport, domain logic, and Postgres persistence.',
     engineeringNarrative:
-      'Written in pure C99 against POSIX sbrk(), malloc_allocator builds a drop-in replacement for libc malloc, free, calloc, and realloc from zero. Each allocation carries an explicit 24-byte header_t struct tracking block size, freedom flag, and linked-list neighbor pointers under a global pthread_mutex_t.',
+      'Uses Go chi routing, sqlc compile-time SQL generation over pgx/v5, Redis sessions and sliding-window rate limits, plus JWT access tokens and a TypeScript client.',
     turningPoint:
-      'Repeated allocations and frees fragment a naive heap into unusable slivers. Implementing forward free-block coalescing—merging contiguous headers via curr->size += sizeof(header_t) + curr->next->size—turned an experimental slab into a self-healing arena.',
-    bridgeToNext:
-      'Once dynamic memory can be carved, reused, and coalesced safely on Linux, the next step upward is listening directly to what the running Linux kernel exposes about CPU, memory, and processes.',
+      'Keeping the domain package free of SQL and HTTP imports made persistence swappable and behavior explicit.',
+    bridgeToNext: 'Next: collapsing CLI and HTTP handlers around a single in-memory store.',
     readmeFilename: 'README.md',
     readmeSections: [
       {
-        heading: 'Why Build malloc() From Scratch',
-        body: 'Calling libc malloc treats virtual memory like a black box. By walking the program break directly via sbrk(), every 24-byte metadata header, alignment decision, and mutex lock becomes observable.',
+        heading: 'Layers',
+        body: 'Delivery (chi, JWT, Redis limiter) -> UseCase -> Domain (pure Go) -> Repository (sqlc + pgx/v5).',
       },
       {
-        heading: 'Block Layout & Lifecycle',
-        body: '1. get_free_block(size) scans the linked list for a first-fit reusable header.\n2. On miss, sbrk(sizeof(header_t) + size) requests contiguous virtual pages from the OS.\n3. my_free(ptr) marks headers free and coalesces adjacent free blocks before printing [USED]/[FREE] diagnostics via print_heap().',
-      },
-      {
-        heading: 'Build & Stress Verification',
-        body: 'make test && ./allocator_test — exercises my_malloc, my_calloc zero-fill, my_realloc growth/copy, and multi-block coalescing sweeps.',
+        heading: 'Scope',
+        body: 'Handles registration, auth, task ownership, and explicit admin roles with real tests.',
       },
     ],
-    readmeMarkdown: `# malloc_allocator — Thread-Safe POSIX Heap Allocator in C99
+    readmeMarkdown: `# GO_DB: Clean Architecture API in Go
 
-> **Station 01 · Act I (Metal & Memory)**  
-> *"Before you own a system, you must earn a single byte of virtual memory."*
+A layered Go REST API and TypeScript client for user authentication, task ownership, and administrator management.
 
-## The Story
-High-level runtimes hide the cost of dynamic memory behind opaque allocators. \`malloc_allocator\` strips away \`libc\` convenience to implement \`my_malloc\`, \`my_free\`, \`my_calloc\`, and \`my_realloc\` directly atop POSIX \`sbrk()\` and \`pthread_mutex_t\`.
-
-## Memory Architecture
-\`\`\`
-[ header_t (24B) | payload bytes ... ] -> [ header_t (24B) | payload bytes ... ] -> NULL
-  ├── size_t size
-  ├── unsigned int is_free
-  └── struct header_t *next
-\`\`\`
-
-1. **First-Fit Free-List Reuse**: \`get_free_block(size)\` walks the arena before ever touching the kernel break.
-2. **Program Break Expansion**: On cache miss, \`sbrk(sizeof(header_t) + size)\` requests raw heap growth.
-3. **Adjacent Coalescing**: Freed contiguous blocks collapse backward/forward (\`curr->size += sizeof(header_t) + curr->next->size\`) to prevent heap fragmentation.
-4. **Thread Safety**: Every arena mutation is serialized via \`pthread_mutex_lock\`.
-
-## Quick Start
-\`\`\`bash
-make
-./test_allocator
-\`\`\`
-
-## Heap Telemetry Format
-\`print_heap()\` emits canonical block states:
-\`\`\`text
-[USED] size=64 bytes | addr=0x55a8f1000018
-[FREE] size=128 bytes | addr=0x55a8f1000070
-\`\`\`
+## Architecture
+- **Delivery**: go-chi router, JWT verification, Redis rate limiter
+- **UseCase**: application workflows and permission rules
+- **Domain**: zero external imports
+- **Repository**: sqlc compile-time queries over PostgreSQL 16 + pgx/v5
 `,
   },
 
-  sysmon_daemon: {
-    repoId: 'sysmon_daemon',
+  task_manager_cli: {
+    repoId: 'task_manager_cli',
     stationNumber: '02',
-    chapterTitle: 'Listening to the Kernel Heartbeat',
-    tagline: 'Chapter 02 · Direct /proc Telemetry Daemon in Go',
+    eraLabel: 'Shared Store',
+    chapterTitle: 'Shared CLI and HTTP Store',
+    beatLine: 'One Go TaskStore protected by a mutex, driven equally from terminal stdin and REST calls.',
+    tagline: 'Part I · Go, Mutex, HTTP JSON',
     openingHook:
-      'With heap allocation mastered in C, Station 02 looks outward to the host operating system—reading raw kernel counters straight from procfs instead of parsing shell tools.',
+      'A concurrent Go task manager unifying local CLI commands with an in-memory HTTP JSON API.',
     engineeringNarrative:
-      'sysmon_daemon is a lightweight Go service that reads /proc/stat CPU jiffies, /proc/meminfo physical page tables, and active /proc/[pid] directories directly, serving clean telemetry JSON on GET /api/sysmon and liveness probes on GET /health.',
+      'Both terminal commands and HTTP handlers mutate the same mutex-protected TaskStore in memory with zero external packages.',
     turningPoint:
-      'Differential sampling across consecutive /proc/stat snapshots eliminated instantaneous jitter spikes, while synthetic non-Linux fallbacks ensured development and container verification remained deterministic.',
-    bridgeToNext:
-      'Reading telemetry is passive; the next frontier is holding live shared state under concurrent client pressure across real network sockets.',
+      'Eliminated file-lock races between separate CLI and server paths by keeping state in one thread-safe store.',
+    bridgeToNext: 'From one mutex store to serving concurrent clients directly over TCP sockets.',
     readmeFilename: 'README.md',
     readmeSections: [
       {
-        heading: 'Zero Subprocess Telemetry',
-        body: 'Spawning top or free wastes fork/exec cycles and brittle string splits. sysmon_daemon reads Linux procfs files directly inside Go byte scanners.',
-      },
-      {
-        heading: 'HTTP Endpoints',
-        body: 'GET /api/sysmon -> {"cpu": float64, "mem": int, "procs": int}\nGET /health -> {"status": "OK"}',
+        heading: 'Endpoints',
+        body: 'GET /api/tasks, POST /api/tasks, PATCH /api/tasks?id=N shared with CLI commands.',
       },
     ],
-    readmeMarkdown: `# sysmon_daemon — Direct /proc Kernel Telemetry Daemon in Go
+    readmeMarkdown: `# task_manager_cli
 
-> **Station 02 · Act I (Metal & Memory)**  
-> *"Stop shelling out to measure the machine. Read /proc directly."*
-
-## The Story
-Monitoring tools often wrap external CLI utilities inside fragile shell pipelines. \`sysmon_daemon\` goes straight to the kernel filesystem interface in Go, computing live CPU utilization deltas, memory footprints, and process table counts in microseconds.
-
-## Data Sources
-| Metric | Source File | Method |
-| --- | --- | --- |
-| \`cpu\` | \`/proc/stat\` | User/Nice/Sys/Idle jiffy delta |
-| \`mem\` | \`/proc/meminfo\` | Total vs Available KB normalization |
-| \`procs\` | \`/proc/[pid]\` | Numeric PID directory scan |
-
-## Endpoints
-\`\`\`http
-GET /api/sysmon  -> {"cpu": 24.8, "mem": 6420, "procs": 198}
-GET /health      -> {"status": "OK"}
-\`\`\`
-
-## Run
-\`\`\`bash
-go run .
-\`\`\`
+Concurrency-safe Go task manager sharing one mutex-locked store across CLI and HTTP.
 `,
   },
 
   redis_clone: {
     repoId: 'redis_clone',
     stationNumber: '03',
-    chapterTitle: 'Speed Lives in RAM',
-    tagline: 'Chapter 03 · Concurrent TCP :6379 Key-Value Store in Go',
+    eraLabel: 'Raw TCP',
+    chapterTitle: 'In-Memory Store in Go',
+    beatLine: 'A TCP key-value server on port 6379 handling concurrent clients with RWMutex read locks.',
+    tagline: 'Part I · Go, TCP Sockets, RWMutex',
     openingHook:
-      'Station 03 moves from observing kernel state to owning network transport and in-memory mutation under concurrent load.',
+      'An in-memory key-value engine built from scratch over TCP sockets in Go.',
     engineeringNarrative:
-      'Built in pure Go over raw POSIX TCP sockets on port 6379, redis_clone pairs per-connection goroutines with a sync.RWMutex-protected in-memory store supporting PING, SET, GET, DEL, and KEYS.',
+      'Supports SET, GET, DEL, and PING over port 6379 and an interactive CLI loop with shared read locks for GET.',
     turningPoint:
-      'Splitting shared read locks (RLock) for high-frequency GET queries from exclusive write locks (Lock) on SET/DEL prevented reader starvation while guaranteeing exact Redis-compatible command arity diagnostics.',
-    bridgeToNext:
-      'Once a concurrent in-memory engine can serve clients over TCP, the next challenge is unifying dual interfaces—interactive terminal CLI and HTTP API—over one shared locked core.',
+      'Switching GET queries to sync.RWMutex RLock let concurrent readers run without blocking each other.',
+    bridgeToNext: 'Once raw TCP connections worked cleanly, the next step was serving full HTTP/1.1 without frameworks.',
     readmeFilename: 'README.md',
     readmeSections: [
       {
-        heading: 'Protocol & Concurrency Model',
-        body: 'Each client connection spawns a lightweight goroutine dispatching commands against internal/store.go under sync.RWMutex.',
-      },
-      {
-        heading: 'Supported Commands',
-        body: 'PING -> PONG | SET key value -> OK | GET key -> value / (nil) | DEL key -> OK | KEYS -> listed keys',
+        heading: 'Commands',
+        body: 'PING, SET key value, GET key, DEL key over concurrent goroutine connections.',
       },
     ],
-    readmeMarkdown: `# redis_clone — Concurrent In-Memory Key-Value Engine in Go
+    readmeMarkdown: `# redis_clone
 
-> **Station 03 · Act I (Metal & Memory)**  
-> *"Every round-trip saved is latency earned back for the user."*
-
-## The Story
-Databases feel magical until you build the socket loop and lock table yourself. \`redis_clone\` implements a TCP \`:6379\` server, interactive REPL client, and thread-safe hash store using zero third-party packages.
-
-## Command Grammar
-\`\`\`text
-127.0.0.1:6379> PING
-PONG
-127.0.0.1:6379> SET sifr zero
-OK
-127.0.0.1:6379> GET sifr
-"zero"
-127.0.0.1:6379> DEL sifr
-OK
-\`\`\`
-
-## Concurrency Guarantee
-- Reads (\`GET\`, \`KEYS\`) acquire \`sync.RWMutex.RLock()\` concurrently.
-- Mutations (\`SET\`, \`DEL\`) acquire exclusive \`sync.RWMutex.Lock()\`.
-- Exact arity validation mirrors Redis error responses (\`(error) ERR wrong number of arguments...\`).
+In-memory key-value server in pure Go on TCP port 6379 with \`sync.RWMutex\`.
 `,
   },
 
-  task_manager_cli: {
-    repoId: 'task_manager_cli',
+  'sifr-serve': {
+    repoId: 'sifr-serve',
     stationNumber: '04',
-    chapterTitle: 'One Concurrent Core, Two Interfaces',
-    tagline: 'Chapter 04 · Unified CLI & HTTP JSON Scheduler in Go',
+    eraLabel: 'HTTP Server',
+    chapterTitle: 'HTTP/1.1 Server in Pure Rust',
+    beatLine: 'A thread-per-connection HTTP/1.1 static server built to host real sites with zero crates.',
+    tagline: 'Part I · Rust, HTTP/1.1, TcpListener',
     openingHook:
-      'Closing Act I, Station 04 proves a clean core shouldn’t care whether a human types at a terminal prompt or a browser calls an API.',
+      'Built to serve real static sites cleanly with path traversal protection and proper HTTP status handling directly on TcpListener.',
     engineeringNarrative:
-      'task_manager_cli compiles a single race-free Go scheduler seeding initial engineering tasks (#1 "Initialize neural network", #2 "Deploy microservices") and exposing both CLI commands and GET/POST/PATCH /api/tasks over one mutex-synchronized store.',
+      'Handles GET and HEAD requests, MIME types, index.html lookup, canonicalized root guards against path traversal, and conditional requests.',
     turningPoint:
-      'Unifying terminal command dispatch and net/http JSON handlers around a single TaskStore mutex meant dual-surface mutations could never diverge or race.',
-    bridgeToNext:
-      'Act I mastered single-binary memory, procfs, sockets, and mutexes. Act II scales up into enterprise boundaries: strict 4-layer Hexagonal Architecture backed by PostgreSQL 16 and Redis 7.',
+      'Replacing every web framework with std::net::TcpListener showed how little code a real HTTP server actually needs.',
+    bridgeToNext: 'After serving HTTP from scratch, the next question was measuring what every socket handshake costs.',
     readmeFilename: 'README.md',
     readmeSections: [
       {
-        heading: 'Shared State Architecture',
-        body: 'Both interactive stdin commands and HTTP JSON handlers route into a single mutex-guarded slice of tasks.',
-      },
-      {
-        heading: 'HTTP Contract',
-        body: 'GET /api/tasks · POST /api/tasks {"title":"..."} · PATCH /api/tasks?id=N toggles done/pending state.',
+        heading: 'Capabilities',
+        body: 'GET/HEAD, MIME mapping, index.html directories, conditional responses, and canonical traversal guard.',
       },
     ],
-    readmeMarkdown: `# task_manager_cli — Concurrent Go CLI & HTTP Task Scheduler
+    readmeMarkdown: `# sifr-serve
 
-> **Station 04 · Act I (Metal & Memory · Finale)**  
-> *"Two surfaces, one mutex-guarded source of truth."*
-
-## The Story
-Real infrastructure rarely has only one consumer. \`task_manager_cli\` combines a crisp terminal command runner with an embedded \`net/http\` JSON API inside one zero-dependency Go binary.
-
-## Initial Seed & API
-\`\`\`bash
-GET   /api/tasks          # Returns #1 "Initialize neural network" (done), #2 "Deploy microservices" (pending)
-POST  /api/tasks          # {"title": "Audit kernel rings"} -> 201 Created
-PATCH /api/tasks?id=2     # Toggles pending <-> done atomically
-\`\`\`
-
-## Verification
-\`\`\`bash
-go test -race ./...
-\`\`\`
+Zero-dependency static HTTP/1.1 file server in Rust with MIME detection and path traversal guards.
 `,
   },
 
-  GO_DB: {
-    repoId: 'GO_DB',
+  'sifr-probe': {
+    repoId: 'sifr-probe',
     stationNumber: '05',
-    chapterTitle: 'Enforcing Boundaries at Compile Time',
-    tagline: 'Chapter 05 · Strict 4-Layer Hexagonal Go Service + pgx/v5 + sqlc',
+    eraLabel: 'Socket Timing',
+    chapterTitle: 'Zero-Dep Latency Prober',
+    beatLine: 'Measured TCP connect RTT and HTTP first-byte p50, p90, and p99 percentiles in 150 lines of C++17.',
+    tagline: 'Part I · C++17, POSIX Sockets',
     openingHook:
-      'Welcome to Act II. As systems grow beyond single files, entropy destroys velocity unless architectural boundaries are enforced structurally by the compiler.',
+      'A tiny C++17 network prober linking nothing beyond libc over POSIX sockets.',
     engineeringNarrative:
-      'GO_DB implements strict 4-layer Hexagonal Clean Architecture in Go 1.23+: a pure Domain core with zero external imports, UseCase orchestration, sqlc compile-time typed SQL repositories over PostgreSQL 16 (pgx/v5), and a go-chi Delivery layer guarded by JWT access/refresh auth, RBAC AdminMiddleware, and a Redis 7 sliding-window rate limiter.',
+      'Separates TCP connect timing from HTTP first-byte latency and reports min, p50, p90, p99, max, and mean as text or JSON.',
     turningPoint:
-      'Pairing sqlc code generation with pgx/v5 eliminated runtime SQL reflection bugs completely—schema mismatches fail compilation before a container ever boots.',
-    bridgeToNext:
-      'With transactional data pipelines isolated and rate-limited, Station 06 asks the opposite question: what happens when analytical intelligence must run in under 1 millisecond with zero heavy dependencies?',
+      'Kept the entire prober cleanly readable in ~150 lines without Boost or curl.',
+    bridgeToNext: 'With network foundations grounded, the story moved into machine learning stripped down to plain arithmetic.',
     readmeFilename: 'README.md',
     readmeSections: [
       {
-        heading: 'The 4 Hexagonal Rings',
-        body: 'Delivery (go-chi + JWT + Redis 7 100 req/min limiter) -> UseCase (business logic) -> Domain (zero external imports) <- Repository (PostgreSQL 16 + pgx/v5 + sqlc).',
-      },
-      {
-        heading: 'Route & RBAC Surface',
-        body: '/health, /api/v1/auth/register, /api/v1/auth/login, /api/v1/tasks/*, and AdminMiddleware-protected /api/v1/admin/users.',
+        heading: 'Usage',
+        body: 'sifrprobe example.com:80 -n 20 --http --json',
       },
     ],
-    readmeMarkdown: `# GO_DB — Hexagonal Clean Architecture Backend in Go 1.23+
+    readmeMarkdown: `# sifr-probe
 
-> **Station 05 · Act II (Boundaries & Signal)**  
-> *"If your domain layer imports a database driver, your architecture is already coupled."*
-
-## The Story
-Production backends rot when HTTP handlers talk directly to SQL strings. \`GO_DB\` enforces strict Hexagonal Architecture across four isolated layers paired with a TypeScript management surface (\`GodEye\`).
-
-## Dependency Direction
-\`\`\`text
-Delivery (go-chi · JWT · Redis 7 Limiter) ──▶ UseCase ──▶ Domain (0 imports)
-                                                            ▲
-Repository (PostgreSQL 16 · pgx/v5 · sqlc) ─────────────────┘
-\`\`\`
-
-## Key Engineering Guarantees
-- **Compile-Time SQL**: \`sqlc\` compiles verified PostgreSQL queries directly into type-safe Go methods.
-- **Sliding-Window Protection**: Redis 7 limits traffic at \`100 req/min\` per IP before database pools feel pressure.
-- **Role-Based Access Control**: \`AdminMiddleware\` isolates \`/api/v1/admin/users\` from standard JWT bearer sessions.
+Zero-dependency TCP/HTTP latency prober in ~150 lines of C++17 with p50/p90/p99 percentiles and JSON output.
 `,
   },
 
   churn_analytics_engine: {
     repoId: 'churn_analytics_engine',
     stationNumber: '06',
-    chapterTitle: 'Shipping Intelligence in 300 Bytes',
-    tagline: 'Chapter 06 · Dependency-Free Serverless Logistic Inference',
+    eraLabel: 'Plain Math ML',
+    chapterTitle: 'Zero-Dependency Churn Inference',
+    beatLine: 'Stripped pandas and scikit-learn out of production inference down to 300 bytes of JSON weights.',
+    tagline: 'Part II · Python, Logistic Regression',
     openingHook:
-      'Too many ML deployments ship 400 MB of NumPy and scikit-learn to evaluate four multiplications and one sigmoid curve. Station 06 cuts the dead weight away.',
+      'A churn model trained offline, exported to 300 bytes of weights, and evaluated in plain Python math.',
     engineeringNarrative:
-      'churn_analytics_engine trains offline in scikit-learn, exports coefficients into a ~300-byte model_weights.json artifact, and runs serverless inference in pure stdlib Python math—outputting {"churnProbability": float, "riskLevel": "HIGH" | "MEDIUM" | "LOW"}.',
+      'Instead of shipping a heavy ML container to run a simple linear dot product, predict_churn parses the trained JSON weights and runs directly.',
     turningPoint:
-      'Replacing cold-start runtime dependencies with pre-extracted scalar weights slashed container size and cold latency under 1 ms while keeping exact parity with Python threshold boundaries (> 0.65 HIGH, > 0.35 MEDIUM).',
-    bridgeToNext:
-      'From 300-byte tabular weights, Act III escalates to full convolutional computer vision on the desktop, single-process hardware telemetry, and custom Triton/XLA GPU kernels.',
+      'Cold inference dropped under one millisecond with zero runtime packages.',
+    bridgeToNext: 'From 300 bytes of regression weights to running deep vision inference inside a native desktop app.',
     readmeFilename: 'README.md',
     readmeSections: [
       {
-        heading: 'Offline Train, Zero-Dep Serve',
-        body: 'Train once with scikit-learn, serialize coefficients into model_weights.json (~300B), and execute pure Python math.exp() inference on AWS Lambda or HTTP.',
-      },
-      {
-        heading: 'Exact Risk Classification',
-        body: 'probability > 0.65 -> "HIGH" | probability > 0.35 -> "MEDIUM" | else "LOW".',
+        heading: 'Inference',
+        body: 'Offline training writes weights JSON; runtime executes pure Python math.',
       },
     ],
-    readmeMarkdown: `# churn_analytics_engine — Zero-Dependency Serverless Churn Inference
+    readmeMarkdown: `# churn_analytics_engine
 
-> **Station 06 · Act II (Boundaries & Signal · Finale)**  
-> *"Train with full tooling offline. Deploy only the mathematics."*
+Serverless logistic regression inference without scikit-learn or pandas at runtime.
 
-## The Story
-Shipping gigabyte ML images to evaluate a logistic regression equation makes serverless cold starts miserable. \`churn_analytics_engine\` separates training from serving cleanly: offline training exports a ~300-byte \`model_weights.json\`, and production executes pure Python \`math.exp\`.
-
-## Inference Contract
-\`\`\`python
-logit = intercept + w_tenure*tenure + w_monthly*monthly + w_total*total + w_contract
-probability = 1.0 / (1.0 + math.exp(-logit))
-risk_level = "HIGH" if probability > 0.65 else ("MEDIUM" if probability > 0.35 else "LOW")
-\`\`\`
-
-\`\`\`json
-{"churnProbability": 0.784, "riskLevel": "HIGH"}
-\`\`\`
+## Tiers
+- \`> 0.65\`: HIGH risk
+- \`> 0.35\`: MEDIUM risk
+- \`<= 0.35\`: LOW risk
 `,
   },
 
   GreenLens: {
     repoId: 'GreenLens',
     stationNumber: '07',
-    chapterTitle: 'Putting Neural Pathology in a Grower’s Hands',
-    tagline: 'Chapter 07 · Native Rust egui + VGG16 Agricultural Workbench',
+    eraLabel: 'Desktop Vision',
+    chapterTitle: 'Native Rust Desktop Plant Classifier',
+    beatLine: 'Paired a Rust egui desktop interface with a local TensorFlow VGG16 worker hitting 95.54% accuracy offline.',
+    tagline: 'Part II · Rust egui, TensorFlow VGG16, SQLite',
     openingHook:
-      'Act III begins in the physical world: helping agricultural growers diagnose crop disease in seconds on an offline native desktop GPU application.',
+      'A native desktop application identifying 15 crop leaf diseases from photos completely offline.',
     engineeringNarrative:
-      'GreenLens marries a crisp Rust egui/eframe OpenGL desktop shell (#080f0b canvas, #40e080 emerald indicators) with a supervised Python VGG16 Block5 TensorFlow worker communicating over JSON-lines stdio, backed by an SQLite extension guidance database.',
+      'An egui/eframe frontend in Rust communicates over JSON-lines stdio with a supervised Python VGG16 inference worker and SQLite guidance store.',
     turningPoint:
-      'Decoupling the 60 FPS Rust UI thread from heavy TensorFlow inference over a long-lived JSON-lines worker kept the viewport responsive while achieving 95.54% held-out test accuracy (0.950 macro F1) across 3,095 test images and 15 PlantVillage classes.',
-    bridgeToNext:
-      'Pairing Rust UI discipline with direct system data sparked an obsession: what if a full Linux system cockpit ran natively in Rust with zero subprocesses at all?',
+      'Reached 95.54% accuracy (0.950 macro F1) across 3,095 held-out PlantVillage test images with local treatment advice.',
+    bridgeToNext: 'Running VGG16 locally led directly to asking what PyTorch executes on the GPU underneath.',
     readmeFilename: 'README.md',
     readmeSections: [
       {
-        heading: 'Hybrid Architecture (Rust + Python Worker)',
-        body: 'src/app.rs renders the native OpenGL egui workbench while keeping a persistent Python VGG16 process alive over JSON-lines stdio for sub-second classification.',
-      },
-      {
-        heading: 'Held-Out PlantVillage Benchmarks',
-        body: '14,434 train / 3,095 val / 3,095 test images across 15 Pepper, Potato & Tomato classes: 95.54% Test Accuracy · 0.950 Macro F1 · Institution-cited SQLite diseases.db guidance.',
+        heading: 'Pipeline',
+        body: 'Rust egui opens images -> JSON-lines stdio IPC -> local VGG16 worker -> SQLite guidance.',
       },
     ],
-    readmeMarkdown: `# GreenLens — Native Rust + VGG16 Plant Pathology Workbench
+    readmeMarkdown: `# GreenLens
 
-> **Station 07 · Act III (Vision, Flight & Silicon)**  
-> *"Offline agricultural diagnostics pairing a Rust OpenGL cockpit with institution-cited extension guidance."*
+Native desktop plant disease identifier combining a Rust \`egui\` interface with a local TensorFlow VGG16 worker and SQLite database.
 
-## The Story
-Farmers shouldn’t need cloud round-trips or sluggish web wrappers to identify blight on a field laptop. \`GreenLens\` wraps fine-tuned VGG16 convolutional vision inside a native Rust \`egui/eframe\` desktop interface with zero frame drops.
-
-## Held-Out Test Performance (3,095 Images · 15 Classes)
-- **Test Accuracy**: \`95.54%\`
-- **Macro F1**: \`0.950\`
-- **Split**: \`14,434\` Train · \`3,095\` Validation · \`3,095\` Test (PlantVillage)
-
-## IPC & Guidance Pipeline
-\`\`\`text
-[Rust egui OpenGL UI] ──JSON-lines stdio──▶ [Python VGG16 Block5 Worker]
-         │
-         ▼
-[SQLite diseases.db] ──▶ Clickable Top-3 Pathogen Guidance (NC State / UF / ARC Egypt)
-\`\`\`
-`,
-  },
-
-  'tachyon-fetch': {
-    repoId: 'tachyon-fetch',
-    stationNumber: '08',
-    chapterTitle: 'Zero Forks. Zero Lies.',
-    tagline: 'Chapter 08 · Cockpit-Grade Rust Hardware Telemetry Fetch',
-    openingHook:
-      'Traditional CLI fetch scripts spawn dozens of sluggish shells just to print six lines of system specs. Station 08 bans child processes completely.',
-    engineeringNarrative:
-      'tachyon-fetch is a 1.9 MB Rust 2021 binary that walks /proc, /sys, DMI tables, hwmon thermals, and NVML GPU counters in one process and one pass—shipping 25 toggleable modules, 6 curated color themes in src/config.rs, Kitty graphics support, and an interactive ratatui --tui configurator.',
-    turningPoint:
-      'Replacing external commands (uname, lspci, df, nvidia-smi) with direct Rust byte-slice parsing compressed end-to-end execution into single-digit milliseconds—packaged reproducibly via Nix flakes.',
-    bridgeToNext:
-      'Having stripped overhead out of the operating system telemetry path, Station 09 dives beneath PyTorch’s runtime abstractions straight into GPU shared memory.',
-    readmeFilename: 'README.md',
-    readmeSections: [
-      {
-        heading: 'Zero Child Process Rule',
-        body: 'Zero shells spawned. Direct reads of /proc, /sys/class/hwmon, DMI SMBIOS, and libnvidia-ml (NVML) inside a 1.9 MB static binary.',
-      },
-      {
-        heading: '6 Built-In Palettes & 25 Modules',
-        body: 'Solitude, Vantablack, Hackerman, Retro 82, Rose Pine (dark/light), and Flexoki Light (dark/light), configurable live via tachyon --tui.',
-      },
-    ],
-    readmeMarkdown: `# tachyon-fetch — Cockpit-Grade Linux System Telemetry Fetch
-
-> **Station 08 · Act III (Vision, Flight & Silicon)**  
-> *"One process. One pass. 25 modules. Zero child forks."*
-
-## The Story
-System readouts shouldn’t fork 18 subprocesses just to tell you which GPU is mounted. \`tachyon-fetch\` walks kernel virtual filesystems, hwmon sensors, DMI tables, and NVML directly in Rust—rendering a flight-deck HUD in a 1.9 MB binary.
-
-## Built-In Palettes (\`src/config.rs\`)
-\`Vantablack\` · \`Solitude\` · \`Hackerman\` · \`Retro 82\` · \`Rose Pine\` · \`Flexoki Light\`
-
-## Usage
-\`\`\`bash
-tachyon --theme "Vantablack" --variant dark
-tachyon --tui   # Live interactive ratatui configurator
-\`\`\`
+- **Accuracy**: 95.54% on 3,095 test images (macro F1 0.950)
+- **Classes**: 15 Pepper, Potato, and Tomato leaf classes
 `,
   },
 
   'sifr-ml-systems': {
     repoId: 'sifr-ml-systems',
-    stationNumber: '09',
-    chapterTitle: 'Stepping Below the PyTorch Boundary',
-    tagline: 'Chapter 09 · Fused Triton & JAX XLA GPU Kernels (36/36 Parity)',
+    stationNumber: '08',
+    eraLabel: 'GPU Kernels',
+    chapterTitle: 'GPU Kernels Below PyTorch',
+    beatLine: 'Wrote custom Triton and JAX XLA RMSNorm and SDPA kernels with 36 numerical parity tests.',
+    tagline: 'Part II · Triton, JAX XLA, PyTorch, CUDA',
     openingHook:
-      'Calling high-level tensor ops leaves massive memory-bandwidth performance on the table. At Station 09, speed becomes an empirical science.',
+      'Studied and implemented computation beneath the high-level ML framework boundary.',
     engineeringNarrative:
-      'sifr-ml-systems implements fused RMSNorm and FlashAttention-style causal SDPA kernels across PyTorch reference, hand-written Triton, torch.compile Inductor, and JAX XLA—measuring medians over 100 CUDA events after 10 warmup passes via zero-copy DLPack.',
+      'Benchmarks fused RMSNorm and causal SDPA across PyTorch, custom Triton, Inductor, and JAX XLA using DLPack zero-copy interop.',
     turningPoint:
-      'Fusing RMSNorm row reductions inside SRAM cut 4096×4096 fp16 latency from 3.360 ms down to 0.147 ms (22.8× via JAX XLA; 0.258 ms via Triton), while custom tiled online-softmax FlashAttention reached 0.617 ms on RTX 4060 with all 36 pytest numerical parity checks green.',
-    bridgeToNext:
-      'Now only two layers of abstraction remained unbuilt from scratch: the display compositor & GPU driver stack itself, and the operating system beneath it. Welcome to Act IV.',
+      'RMSNorm dropped from 3.360 ms to 0.147 ms in JAX XLA while gating every speedup behind 36 fp32/fp16/bf16 parity tests.',
+    bridgeToNext: 'Dropping below frameworks opened a deeper question: how does software own memory, processes, and trust itself?',
     readmeFilename: 'README.md',
     readmeSections: [
       {
-        heading: 'Evidence-First Engineering',
-        body: 'Zero unmeasured claims. Every speedup in EVIDENCE.md is backed by 10 warmup + 100 CUDA event medians and 36 executable pytest fp32/fp16/bf16 parity assertions.',
-      },
-      {
-        heading: 'Benchmarked Workloads (RTX 4060 · cap 8.9)',
-        body: 'bench/compare_rmsnorm.py (4096x4096 fp16 -> 0.147 ms XLA, 22.8x) and bench/compare_attention.py (4x16x1024x64 causal -> 0.632 ms Triton, 14.6x vs naive ref).',
+        heading: 'Scope',
+        body: 'Reproducible commands, warmup + medians, explicit GPU reporting, and 36 numerical parity tests.',
       },
     ],
-    readmeMarkdown: `# sifr-ml-systems — Hardware-Aware GPU Kernels & Parity Evidence
+    readmeMarkdown: `# sifr-ml-systems
 
-> **Station 09 · Act III (Vision, Flight & Silicon · Finale)**  
-> *"Speed is never claimed—it is measured with warmup passes, CUDA events, and 36 numerical parity tests."*
+Hardware-aware ML kernels in Triton, JAX XLA, and PyTorch with reproducible benchmarks and 36 parity checks.
+`,
+  },
 
-## The Story
-High-level deep learning frameworks hide redundant HBM round-trips behind convenient abstractions. \`sifr-ml-systems\` drops beneath the framework boundary to write fused RMSNorm and online-softmax Attention kernels in Triton and compare them apples-to-apples over zero-copy DLPack against PyTorch, \`torch.compile\`, and JAX XLA.
+  malloc_allocator: {
+    repoId: 'malloc_allocator',
+    stationNumber: '09',
+    eraLabel: 'Heap Memory',
+    chapterTitle: 'Custom malloc in C',
+    beatLine: 'Replaced libc malloc, free, calloc, and realloc using POSIX sbrk, 24-byte headers, and coalescing.',
+    tagline: 'Part III · C99, POSIX sbrk, pthread_mutex',
+    openingHook:
+      'Built dynamic memory allocation by hand in C instead of treating libc malloc as magic.',
+    engineeringNarrative:
+      'Every allocated block carries a 24-byte header_t struct storing size, free status, and next pointer under a global pthread_mutex_t.',
+    turningPoint:
+      'Coalescing adjacent free blocks on my_free kept repeated alloc/free cycles from fragmenting the heap.',
+    bridgeToNext: 'After allocating heap blocks by hand, the next step was reading what the Linux kernel exposes directly.',
+    readmeFilename: 'README.md',
+    readmeSections: [
+      {
+        heading: 'Block Layout',
+        body: '24B header_t (size_t size, unsigned int is_free, struct header_t *next) followed by payload bytes.',
+      },
+    ],
+    readmeMarkdown: `# malloc_allocator
 
-## Verified Evidence (\`EVIDENCE.md\` · NVIDIA RTX 4060)
-| Workload | PyTorch Naive | Hand-Written Triton | Fastest / SDPA | Parity |
-| --- | --- | --- | --- | --- |
-| RMSNorm \`4096×4096 fp16\` | \`3.360 ms\` | \`0.258 ms (13.0×)\` | \`0.147 ms JAX XLA (22.8×)\` | \`1e-2\` |
-| FlashAttn \`4×16×1024×64\` | \`9.25 ms\` | \`0.617 ms (15.0×)\` | \`0.372 ms PyTorch SDPA\` | \`2e-2\` |
+Thread-safe free-list allocator in C99 over POSIX \`sbrk()\`.
 
-\`\`\`bash
-pytest -q   # 36 passed (fp32 1e-5, fp16/bf16 2e-2)
-python -m bench.compare_attention
+\`\`\`c
+typedef struct header_t {
+  size_t size;
+  unsigned int is_free;
+  struct header_t *next;
+} header_t;
 \`\`\`
 `,
   },
 
-  'sifr-native': {
-    repoId: 'sifr-native',
+  sysmon_daemon: {
+    repoId: 'sysmon_daemon',
     stationNumber: '10',
-    chapterTitle: 'Throwing Away X11, GTK, and libwayland',
-    tagline: 'Chapter 10 · Cipher: Zig Wire-Protocol Wayland & Vulkan Compute Engine',
+    eraLabel: 'Procfs Daemon',
+    chapterTitle: 'Reading Linux /proc Directly',
+    beatLine: 'Parsed /proc/stat, /proc/meminfo, and /proc/[pid] directly in Go without spawning shell tools.',
+    tagline: 'Part III · Go, Linux /proc, HTTP',
     openingHook:
-      'Entering Act IV (Built From Zero): why link libwayland-client, GTK, or GLFW when the Linux kernel gives you a Unix domain socket and an NVIDIA Vulkan ICD?',
+      'Stopped shelling out to ps or top by reading Linux procfs files directly inside a small Go daemon.',
     engineeringNarrative:
-      'sifr-native (Cipher) is an original windowing and compute graphics engine written from the binary wire up in Zig. It hand-marshals Wayland wl_display, xdg_toplevel, memfd wl_shm, and xkb keyboard events—and dispatches src/ring.comp directly onto the GPU via Vulkan compute.',
+      'Computes CPU tick deltas, memory usage, and active process counts in one process and serves them on GET /api/sysmon.',
     turningPoint:
-      'Early runs presented 24 valid frames that rendered silent solid black (0x000000). Auditing the Vulkan C ABI byte-by-byte uncovered a 20-byte VkSubresourceRange passed where VkBufferImageCopy expected a 16-byte VkSubresourceLayers—fixing those 4 bytes snapped the 24-cell brass & bone SIFR ring onto wayland-0 in crisp RGBA8.',
-    bridgeToNext:
-      'Having conquered the windowing wire and GPU compute without a single C dependency, only one capstone remains at Station 11: the operating system and post-quantum mesh network itself.',
+      'Computing jiffy deltas across consecutive /proc/stat samples removed noisy single-tick spikes.',
+    bridgeToNext: 'That direct procfs reader evolved into a full single-pass hardware telemetry engine in Rust.',
     readmeFilename: 'README.md',
     readmeSections: [
       {
-        heading: 'Zero C Dependencies · Pure Zig Wire Client',
-        body: 'Hand-encoded Wayland binary frames (wl_display, wl_registry, xdg_shell, wl_shm with SCM_RIGHTS memfd) plus direct Vulkan compute dispatch.',
-      },
-      {
-        heading: 'The 4-Byte VkBufferImageCopy Breakthrough',
-        body: 'Replacing 20B VkSubresourceRange with 16B VkSubresourceLayers eliminated stride misalignment and brought src/ring.comp live across 24 presented frames.',
+        heading: 'Sources',
+        body: 'Reads /proc/stat, /proc/meminfo, and numeric PID directories directly.',
       },
     ],
-    readmeMarkdown: `# sifr-native (Cipher) — Native Zig Wayland & Vulkan Compute Framework
+    readmeMarkdown: `# sysmon_daemon
 
-> **Station 10 · Act IV (Built From Zero)**  
-> *"Zero GTK. Zero X11. Zero libwayland. Just Zig, a Unix socket, and SPIR-V compute."*
+Lightweight Go daemon reading Linux \`/proc\` directly and serving JSON metrics on \`GET /api/sysmon\`.
+`,
+  },
 
-## The Story
-Modern UI toolkits stack megabytes of C libraries between your pixels and the display compositor. \`Cipher\` (\`sifr-native\`) speaks the Linux Wayland wire protocol directly in Zig and runs \`src/ring.comp\` compute shaders on bare \`libvulkan.so.1\`.
+  'tachyon-fetch': {
+    repoId: 'tachyon-fetch',
+    stationNumber: '11',
+    eraLabel: 'Hardware Probe',
+    chapterTitle: 'Single-Pass Hardware Fetch in Rust',
+    beatLine: 'Replaced slow shell fetch scripts with a 1.9 MB Rust binary walking /proc, /sys, DMI, and NVML.',
+    tagline: 'Part III · Rust, ratatui, NVML, Nix',
+    openingHook:
+      'A cockpit-style Linux system fetch tool and ratatui TUI configurator with zero child forks.',
+    engineeringNarrative:
+      'Reads 25 OS and hardware modules directly from kernel interfaces in a single pass inside a 1.9 MB binary.',
+    turningPoint:
+      'Removing every external command fork cut poll footprint down to a fraction of a CPU percent.',
+    bridgeToNext: 'With OS telemetry covered, attention turned to implementing cryptography straight from standards.',
+    readmeFilename: 'README.md',
+    readmeSections: [
+      {
+        heading: 'Highlights',
+        body: '25 telemetry modules, 6 themes, ratatui TUI configurator, Kitty image protocol, Nix flake.',
+      },
+    ],
+    readmeMarkdown: `# tachyon-fetch
 
-## The 4-Byte ABI Fix That Lit Up the Screen
-When the first Vulkan compute output buffer copied cleanly on Wayland yet rendered \`0x000000\` black pixels, ABI byte inspection revealed \`VkBufferImageCopy\` had received a **20-byte** \`VkSubresourceRange\` instead of a **16-byte** \`VkSubresourceLayers\`. Fixing that 4-byte offset illuminated all 24 frames on \`wayland-0\`.
+Single-process Linux fetch engine in Rust with 25 modules, \`ratatui\` configurator, and zero child forks.
+`,
+  },
 
-\`\`\`text
-[Zig Wayland Wire] ──▶ wl_display / xdg_toplevel / wl_shm (SCM_RIGHTS memfd)
-[Vulkan Compute]   ──▶ src/ring.comp (24-cell polar cipher · 241 ms probe · 24 frames)
-\`\`\`
+  'sifr-crypt': {
+    repoId: 'sifr-crypt',
+    stationNumber: '12',
+    eraLabel: 'Cryptography',
+    chapterTitle: 'SHA-256 From the Spec',
+    beatLine: 'Wrote FIPS 180-4 SHA-256 in pure C++17 with built-in self-test vectors and zero linked libraries.',
+    tagline: 'Part III · C++17, FIPS 180-4',
+    openingHook:
+      'Clean FIPS 180-4 SHA-256 hashing for files and stdin with zero OpenSSL or external crypto dependencies.',
+    engineeringNarrative:
+      'Implements padding, message schedule expansion, and compression rounds verified against built-in test vectors via --selftest.',
+    turningPoint:
+      'Passes SHA256_SELFTEST byte-for-byte straight out of a standalone C++17 binary.',
+    bridgeToNext: 'Writing crypto primitives from zero became the foundation for a capability-secured OS prototype.',
+    readmeFilename: 'README.md',
+    readmeSections: [
+      {
+        heading: 'Commands',
+        body: 'sifr-crypt sha256 file.bin | sifr-crypt sha256 - | sifr-crypt sha256 --selftest',
+      },
+    ],
+    readmeMarkdown: `# sifr-crypt
+
+Zero-dependency FIPS 180-4 SHA-256 hasher in C++17 with built-in self-test vectors.
 `,
   },
 
   verrev: {
     repoId: 'verrev',
-    stationNumber: '11',
-    chapterTitle: 'The Capstone: Zero External Crates, Post-Quantum Mesh OS',
-    tagline: 'Chapter 11 · Vertically Integrated P2P Operating System in Rust',
+    stationNumber: '13',
+    eraLabel: 'Capability OS',
+    chapterTitle: 'Post-Quantum P2P OS Prototype',
+    beatLine: 'Early-stage Rust OS prototype implementing Keccak SHA-3, ML-KEM-1024, ML-DSA-87, and capabilities with zero crates.',
+    tagline: 'Part III · Rust, Post-Quantum Crypto, Prototype',
     openingHook:
-      'Every station along the track—C memory headers, Linux procfs, TCP locks, isolated layers, and bare-metal shaders—converges here at the final stop before the Exit.',
+      'Started building the cryptographic and capability core of a peer-to-peer operating system with zero external Rust crates.',
     engineeringNarrative:
-      'verrev is a vertically integrated peer-to-peer operating system and encrypted mesh built in Rust + LLVM with zero external crates. Across Layers 0–7, it houses raw Linux syscall shims, KAT-verified Keccak-f[1600] SHA-3 hashes, ML-KEM-1024 + ML-DSA-87 + XChaCha20-Poly1305 cryptography, unforgeable capability tokens, and 256-bucket Kademlia XOR mesh routing.',
+      'Implements Keccak-f[1600], ML-KEM-1024, ML-DSA-87, XChaCha20-Poly1305, capability primitives, and CRDT foundations cleanly in Rust.',
     turningPoint:
-      'Proving the LFSR-generated Keccak-f[1600] round constants against NIST Known Answer Tests and verifying 27 post-quantum crypto tests plus full workspace integration (31/31 passing under cargo test) delivered a complete sovereign trust root built 100% from zero.',
-    bridgeToNext:
-      'With post-quantum systems architecture verified end to end, one final chapter turns the lens inward: SIFR itself—the 24-cell cipher canvas, spring physics engine, and zero-template exhibition carrying all twelve repositories.',
+      'Scoped transparently as an early prototype: the crypto and syscall shims run and test cleanly while transport and storage remain in active exploration.',
+    bridgeToNext: 'Alongside OS research came rebuilding everyday Unix and graphics tools with zero dependencies.',
     readmeFilename: 'README.md',
     readmeSections: [
       {
-        heading: 'Zero External Crates Architecture (Layers 0–4)',
-        body: 'L0: verrev-syscall + verrev-hash (KAT Keccak) · L1: verrev-crypto (ML-KEM-1024, ML-DSA-87, XChaCha20) + verrev-identity + verrev-capability · L2/4: verrev-store, verrev-p2p (256 KBuckets), verrev-db.',
-      },
-      {
-        heading: 'Test Verification Ledger',
-        body: 'cargo test -- --test-threads=1 -> 31 passed across workspace crates (27 cryptographic primitives + P2P routing + capability ACL enforcement).',
+        heading: 'Honest Scope',
+        body: 'Core post-quantum crypto and capability primitives exist and compile cleanly; network transport and storage remain early prototype stubs.',
       },
     ],
-    readmeMarkdown: `# verrev — Vertically Integrated Post-Quantum Peer-to-Peer OS
+    readmeMarkdown: `# verrev
 
-> **Station 11 · Act IV (Built From Zero)**  
-> *"Zero external crates beyond Rust + LLVM. From syscall shims to post-quantum mesh routing."*
+Early-stage prototype for a peer-to-peer operating system in pure Rust (zero third-party crates).
 
-## The Story
-Most distributed systems glue together dozens of unaudited third-party dependencies. \`verrev\` owns the entire vertical stack—cryptographic hash permutations, key encapsulation, post-quantum signatures, capability tokens, content addressing, and Kademlia XOR peer discovery—under one zero-dependency workspace.
+- Custom Keccak SHA-3, ML-KEM-1024, ML-DSA-87, XChaCha20-Poly1305
+- Capability security & CRDT primitives
+- Network transport and object store layers are in early prototype phase
+`,
+  },
 
-## Vertical Architecture Matrix
-| Layer | Crates | Verification |
-| --- | --- | --- |
-| **L0 · Foundation** | \`verrev-syscall\`, \`verrev-hash\` (SHA3/SHAKE) | NIST KAT-verified Keccak-f[1600] |
-| **L1 · PQ Security** | \`verrev-crypto\`, \`verrev-identity\`, \`verrev-capability\` | 27 PQ tests (ML-KEM-1024, ML-DSA-87, XChaCha20) |
-| **L2–4 · Data & Mesh** | \`verrev-store\`, \`verrev-p2p\` (256 KBuckets), \`verrev-db\` | \`cargo test -- --test-threads=1\` (31/31 pass) |
+  'sifr-query': {
+    repoId: 'sifr-query',
+    stationNumber: '14',
+    eraLabel: 'Streaming Data',
+    chapterTitle: 'Streaming CSV Query Engine',
+    beatLine: 'Filter, group-by aggregate, and sort CSV files or stdin in 350 lines of Rust with zero crates.',
+    tagline: 'Part IV · Rust, Streaming CSV',
+    openingHook:
+      'Built a standalone CSV query CLI in pure Rust instead of waiting on heavy dataframe tools.',
+    engineeringNarrative:
+      'Streams stdin or files for filter conditions, column selection, group-by count/sum/avg/min/max, and top-N sorting to CSV or Markdown.',
+    turningPoint:
+      'Constant-memory streaming keeps large logs snappy in everyday terminal pipes.',
+    bridgeToNext: 'Next came formatting documentation directly to clean ANSI terminal escapes in one pass.',
+    readmeFilename: 'README.md',
+    readmeSections: [
+      {
+        heading: 'Operations',
+        body: 'filter, select, group-by (count/sum/avg/min/max), and top-N over stdin or files.',
+      },
+    ],
+    readmeMarkdown: `# sifr-query
+
+Zero-dependency streaming CSV query engine in ~350 lines of Rust.
+`,
+  },
+
+  'sifr-md': {
+    repoId: 'sifr-md',
+    stationNumber: '15',
+    eraLabel: 'Single-Pass Text',
+    chapterTitle: 'Markdown to ANSI in One Pass',
+    beatLine: 'Renders headings, lists, blockquotes, links, and code blocks to ANSI escapes in 350 lines of Rust.',
+    tagline: 'Part IV · Rust, ANSI Terminal',
+    openingHook:
+      'Single-pass UTF-8 Markdown terminal renderer built without regex engines or parser crates.',
+    engineeringNarrative:
+      'Formats headings, lists, bold/italic/code inline styles, quotes, and code fences cleanly for terminal reading.',
+    turningPoint:
+      'Zero crates and a single pass keep startup instantaneous in Unix pipes.',
+    bridgeToNext: 'After plain text streams came decoding compressed binary bitstreams bit by bit.',
+    readmeFilename: 'README.md',
+    readmeSections: [
+      {
+        heading: 'Features',
+        body: 'Headings, ordered/unordered lists, code fences, inline emphasis, links, UTF-8 wrapping.',
+      },
+    ],
+    readmeMarkdown: `# sifr-md
+
+Single-pass Markdown to ANSI terminal renderer in ~350 lines of pure Rust.
+`,
+  },
+
+  'sifr-inflate': {
+    repoId: 'sifr-inflate',
+    stationNumber: '16',
+    eraLabel: 'Bitstreams',
+    chapterTitle: 'DEFLATE and Gzip Without zlib',
+    beatLine: 'Implemented RFC 1951 Huffman decompression and CRC-32 verification in Rust, matching zcat on 21 fixtures.',
+    tagline: 'Part IV · Rust, RFC 1951/1952',
+    openingHook:
+      'Full stored, fixed, and dynamic Huffman DEFLATE and gzip decompression written from scratch in Rust.',
+    engineeringNarrative:
+      'Maintains a 32 KiB sliding window and checks CRC-32 and ISIZE trailers without linking zlib.',
+    turningPoint:
+      'Byte-exact output against zcat across 21 text, binary, empty, unicode, and 160 KB fixtures at levels 1, 6, and 9.',
+    bridgeToNext: 'From decompressing bytes to computing exact line diffs from first principles.',
+    readmeFilename: 'README.md',
+    readmeSections: [
+      {
+        heading: 'Verification',
+        body: 'Byte-exact match against system zcat across 21 compression fixtures.',
+      },
+    ],
+    readmeMarkdown: `# sifr-inflate
+
+Zero-dependency DEFLATE (RFC 1951) and gzip (RFC 1952) decompressor in Rust.
+`,
+  },
+
+  'sifr-diff': {
+    repoId: 'sifr-diff',
+    stationNumber: '17',
+    eraLabel: 'Edit Distance',
+    chapterTitle: 'LCS Unified Diff Engine',
+    beatLine: 'Computes dynamic-programming LCS line diffs with hunk bodies byte-identical to GNU diff -u.',
+    tagline: 'Part IV · Rust, Dynamic Programming',
+    openingHook:
+      'A standalone unified diff engine matching standard Unix diff output and exit codes.',
+    engineeringNarrative:
+      'Runs dynamic programming Longest Common Subsequence with 3 context lines and clean hunk splitting.',
+    turningPoint:
+      'Matches GNU diff -u hunk bodies byte-for-byte with exit code 0, 1, or 2.',
+    bridgeToNext: 'Then taking that zero-dependency discipline all the way down to Wayland sockets and Vulkan shaders.',
+    readmeFilename: 'README.md',
+    readmeSections: [
+      {
+        heading: 'Semantics',
+        body: 'Matches GNU diff -u exit codes (0 same, 1 diff, 2 error) and 3-line hunk context.',
+      },
+    ],
+    readmeMarkdown: `# sifr-diff
+
+Zero-dependency unified line diff in Rust using dynamic programming LCS.
+`,
+  },
+
+  'sifr-native': {
+    repoId: 'sifr-native',
+    stationNumber: '18',
+    eraLabel: 'Cipher Toolkit',
+    chapterTitle: 'Cipher: Native Linux UI in Zig',
+    beatLine: 'Zero-dependency Linux UI framework in Zig 0.17.1: handwritten Wayland protocol, Vulkan renderer, and flexbox layout.',
+    tagline: 'Part IV · Zig 0.17.1, Wayland, Vulkan, GLSL',
+    openingHook:
+      'Cipher builds a complete Linux graphics and application framework from the Wayland Unix socket up, with zero C wrappers or GTK.',
+    engineeringNarrative:
+      'Over 505 KB of Zig and GLSL shaders covering handwritten Wayland wire frames, Vulkan GPU rendering, fractional HiDPI scaling, flexbox layout, and text rendering.',
+    turningPoint:
+      'Owning every byte from wl_display error decoding down to Vulkan image copies turned a bare window test into a full toolkit.',
+    bridgeToNext: 'Once Cipher could open windows and draw on Vulkan, I proved it inside three native desktop applications.',
+    readmeFilename: 'README.md',
+    readmeSections: [
+      {
+        heading: 'No Toolkit Baggage',
+        body: 'Handwritten Wayland client, Vulkan GPU rendering, flexbox layout, text engine, and HiDPI support purely in Zig 0.17.1.',
+      },
+    ],
+    readmeMarkdown: `# Cipher (sifr-native)
+
+Zero-dependency, Vulkan-native Linux UI framework written in Zig 0.17.1.
+No toolkit, no C wrapper, no generated bindings.
+`,
+  },
+
+  'sifr-apps': {
+    repoId: 'sifr-apps',
+    stationNumber: '19',
+    eraLabel: 'Native Apps',
+    chapterTitle: 'Native Apps Built on Cipher',
+    beatLine: 'Built rex multiplexer, cipherterm GPU terminal, and nocturne offline FLAC player natively on Cipher.',
+    tagline: 'Part IV · Zig, Vulkan, POSIX, FLAC',
+    openingHook:
+      'Real desktop applications compiled directly on Cipher, linking only libc and dlopen system handles.',
+    engineeringNarrative:
+      'Ships rex (a Unix-socket pane multiplexer + CLI), cipherterm (Vulkan GPU terminal with live RSS and themes), and nocturne (offline FLAC player).',
+    turningPoint:
+      'Running real daily driver tools directly on your own Zig graphics stack verified every UI layout and GPU primitive under pressure.',
+    bridgeToNext: 'Finally, gathering all twenty systems into a single moving canvas so every idea leads into the next.',
+    readmeFilename: 'README.md',
+    readmeSections: [
+      {
+        heading: 'Three Applications',
+        body: 'rex multiplexer, cipherterm GPU terminal emulator, and nocturne offline FLAC player, linking only libc.',
+      },
+    ],
+    readmeMarkdown: `# sifr-apps
+
+Desktop applications built directly on Cipher (\`../sifr-native\`):
+
+- **rex**: multiplexer server and scriptable CLI over a Unix socket
+- **cipherterm**: Vulkan GPU terminal client with panes and live RSS readout
+- **nocturne**: offline FLAC player
 `,
   },
 
   SIFR: {
     repoId: 'SIFR',
-    stationNumber: '12',
-    chapterTitle: 'The Living Canvas: SIFR Built From Zero',
-    tagline: 'Chapter 12 · 24-Cell Alberti Cipher Physics & Cinema Architecture',
+    stationNumber: '20',
+    eraLabel: 'The Chronicle',
+    chapterTitle: 'The SIFR Moving Canvas',
+    beatLine: 'This portfolio. A TypeScript and Canvas 2D chronicle unifying all twenty systems into one continuous story.',
+    tagline: 'Part IV · TypeScript, Canvas 2D, Express',
     openingHook:
-      'Closing Act IV, Chapter 12 steps inside the very instrument you are navigating—an original TypeScript and 2D physics architecture rejecting generic templates and locking all twelve repositories into one unbroken story.',
+      'Turned the entire progression into a moving narrative canvas where earlier chapters fade cleanly behind each new idea.',
     engineeringNarrative:
-      'SIFR combines a custom 24-cell radial Alberti cipher wheel snapping at crisp 15-degree spring detents, gravitational particle fields bending dynamically under pointer velocity, synthesized Web Audio tactile clicks, live GitHub REST telemetry, and dual bespoke stages tailored for desktop cinema and native mobile thumbs.',
+      'Pairs scroll-linked focus and multi-depth parallax with sleeping Canvas 2D schematics and live GitHub telemetry sync.',
     turningPoint:
-      'Replacing static portfolio cards with a continuous directed journey—a reactive Framer Motion grand entrance, live executable hardware/kernel simulations per chapter, and dynamic GitHub REST synchronization—turned passive browsing into an experiential exhibition.',
-    bridgeToNext:
-      'Chapter 12 completes the twelve-station ascent—from a single 24-byte C allocator header to the SIFR exhibition canvas itself. Step through the Grand Exit to inspect live GitHub telemetry and revisit any work freely.',
+      'Replaced static card grids and calendar timelines with a continuous story progression from first APIs to bare-metal graphics.',
+    bridgeToNext: 'End of the chronicle.',
     readmeFilename: 'README.md',
     readmeSections: [
       {
-        heading: '24-Cell Alberti Cipher & Spring Detent Engine',
-        body: 'Pure angular spring solver (stepAngularSpring) snaps across 24 radial bit cells (15 deg detents), locking into SIFR alignment at shift zero.',
-      },
-      {
-        heading: 'Twelve Live Interactive Labs + GitHub REST Sync',
-        body: 'Synchronizes repository metadata, pushed timestamps, language byte trees, and recent push activity live against github.com/mohamedsalahi.',
+        heading: 'Design',
+        body: 'Entrance, horizontal story progression on desktop and tablets, vertical flow on mobile, and clean ending.',
       },
     ],
-    readmeMarkdown: `# SIFR — Interactive 24-Cell Cipher Canvas & Systems Exhibition
+    readmeMarkdown: `# SIFR
 
-> **Station 12 · Act IV (Built From Zero · Grand Capstone)**  
-> *"One entrance, one canonical track, zero borrowed scaffolding."*
-
-## The Story
-\`SIFR\` (zero / صفر) unifies visual brand identity, mathematical cryptography, 2D pointer-reactive physics, synthesized Web Audio feedback, and twelve live systems engineering sandboxes into a single coherent experience.
-
-## Architectural Pillars
-- **Sequenced Grand Entrance**: Framer Motion + reactive 76-node orbital gravitational field triggering automatically on load.
-- **24-Cell Cipher Core**: Bijective 15° detent cipher mapping (\`decodeRingAtShift(0) -> "SIFR····"\`).
-- **Live GitHub Sync**: Merges live \`pushed_at\` timestamps, language distributions, and public events directly from \`api.github.com/users/mohamedsalahi\`.
+Interactive TypeScript + Canvas 2D engineering chronicle and telemetry showcase.
 `,
   },
 };
@@ -581,19 +597,21 @@ Most distributed systems glue together dozens of unaudited third-party dependenc
 export function getStoryForRepo(repoId: string): RepoStorySpec {
   const direct = REPO_STORIES[repoId];
   if (direct) return direct;
-  const ci = Object.values(REPO_STORIES).find((s) => s.repoId.toLowerCase() === repoId.toLowerCase());
-  if (ci) return ci;
+  const ciKey = Object.keys(REPO_STORIES).find((k) => k.toLowerCase() === repoId.toLowerCase());
+  if (ciKey) return REPO_STORIES[ciKey];
   return {
     repoId,
-    stationNumber: '13',
-    chapterTitle: `${repoId} · Live Repository`,
-    tagline: `Chapter 13 · Synchronized from github.com/mohamedsalahi/${repoId}`,
-    openingHook: `${repoId} is newly published on github.com/mohamedsalahi and automatically integrated into the SIFR exhibition sequence.`,
-    engineeringNarrative: `Synced directly via the GitHub REST API with live repository metadata, primary language breakdown, and architecture summary.`,
-    turningPoint: `Dynamic GitHub discovery keeps the exhibition continuously aligned with every new repository pushed upstream.`,
-    bridgeToNext: `Explore the live metadata and architecture before continuing to the Grand Exit.`,
+    stationNumber: '21',
+    eraLabel: 'Archive',
+    chapterTitle: repoId,
+    beatLine: 'Added to the archive from live GitHub telemetry.',
+    tagline: 'Live Repository',
+    openingHook: `${repoId} pulled dynamically from GitHub.`,
+    engineeringNarrative: 'Synced live into the portfolio archive.',
+    turningPoint: 'Available on the story canvas.',
+    bridgeToNext: 'Continue through the archive.',
     readmeFilename: 'README.md',
-    readmeSections: [],
-    readmeMarkdown: `# ${repoId}\n\nSynchronized directly from [github.com/mohamedsalahi/${repoId}](https://github.com/mohamedsalahi/${repoId}).\n`,
+    readmeSections: [{ heading: 'Overview', body: `Live entry for ${repoId}.` }],
+    readmeMarkdown: `# ${repoId}\n\nPulled dynamically from GitHub telemetry.`,
   };
 }

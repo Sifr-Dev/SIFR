@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" fill="none" role="img" aria-label="Chapter geometric plate part1">
+  <defs>
+    <radialGradient id="glow-part1" cx="50%" cy="50%" r="54%">
+      <stop offset="0%" stop-color="#eab444" stop-opacity="0.16" />
+      <stop offset="55%" stop-color="#7c879c" stop-opacity="0.06" />
+      <stop offset="100%" stop-color="#04060b" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="fade-part1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f3f7fe" stop-opacity="0.04" />
+      <stop offset="50%" stop-color="#eab444" stop-opacity="0.28" />
+      <stop offset="100%" stop-color="#f3f7fe" stop-opacity="0.04" />
+    </linearGradient>
+    
+  </defs>
+  <ellipse cx="600" cy="400" rx="460" ry="300" fill="url(#glow-part1)" />
+  <polygon points="637.88,403.04 616.31,434.32 578.43,431.29 562.12,396.96 583.69,365.68 621.57,368.71" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <polygon points="675.03,412.11 627.03,471.03 552,458.92 524.97,387.89 572.97,328.97 648,341.08" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <polygon points="710.73,427.1 631.9,509.45 521.17,482.35 489.27,372.9 568.1,290.55 678.83,317.65" stroke="#eab444" stroke-opacity="0.34" stroke-width="1" />
+  <polygon points="744.28,447.81 630.73,548.86 486.45,501.05 455.72,352.19 569.27,251.14 713.55,298.95" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <polygon points="775,473.99 623.42,588.55 448.42,514.56 425,326.01 576.58,211.45 751.58,285.44" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <polygon points="802.23,505.29 609.94,627.78 407.7,522.5 397.77,294.71 590.06,172.22 792.3,277.5" stroke="#eab444" stroke-opacity="0.34" stroke-width="1.5" />
+  <polygon points="825.37,541.3 590.32,665.82 364.95,524.53 374.63,258.7 609.68,134.18 835.05,275.47" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <polygon points="843.84,581.55 564.69,701.94 320.86,520.4 356.16,218.45 635.31,98.06 879.14,279.6" stroke="#949eb3" stroke-opacity="0.16" stroke-width="1" />
+  <line x1="80" y1="140" x2="1120" y2="140" stroke="#949eb3" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 8" />
+  <line x1="80" y1="192" x2="1120" y2="192" stroke="#949eb3" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="none" />
+  <line x1="80" y1="244" x2="1120" y2="244" stroke="#949eb3" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 8" />
+  <line x1="80" y1="296" x2="1120" y2="296" stroke="#949eb3" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="none" />
+  <line x1="80" y1="348" x2="1120" y2="348" stroke="#949eb3" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 8" />
+  <line x1="80" y1="400" x2="1120" y2="400" stroke="#eab444" stroke-opacity="0.28" stroke-width="1" stroke-dasharray="none" />
+  <line x1="80" y1="452" x2="1120" y2="452" stroke="#949eb3" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 8" />
+  <line x1="80" y1="504" x2="1120" y2="504" stroke="#949eb3" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="none" />
+  <line x1="80" y1="556" x2="1120" y2="556" stroke="#949eb3" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 8" />
+  <line x1="80" y1="608" x2="1120" y2="608" stroke="#949eb3" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="none" />
+  <line x1="80" y1="660" x2="1120" y2="660" stroke="#949eb3" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 8" />
+  <circle cx="904" cy="400" r="4" fill="#eab444" fill-opacity="0.55" />
+  <circle cx="863.27" cy="552" r="2.2" fill="#dde2ec" fill-opacity="0.55" />
+  <circle cx="752" cy="663.27" r="2.2" fill="#dde2ec" fill-opacity="0.55" />
+  <circle cx="600" cy="704" r="2.2" fill="#dde2ec" fill-opacity="0.55" />
+  <circle cx="448" cy="663.27" r="4" fill="#eab444" fill-opacity="0.55" />
+  <circle cx="336.73" cy="552" r="2.2" fill="#dde2ec" fill-opacity="0.55" />
+  <circle cx="296" cy="400" r="2.2" fill="#dde2ec" fill-opacity="0.55" />
+  <circle cx="336.73" cy="248" r="2.2" fill="#dde2ec" fill-opacity="0.55" />
+  <circle cx="448" cy="136.73" r="4" fill="#eab444" fill-opacity="0.55" />
+  <circle cx="600" cy="96" r="2.2" fill="#dde2ec" fill-opacity="0.55" />
+  <circle cx="752" cy="136.73" r="2.2" fill="#dde2ec" fill-opacity="0.55" />
+  <circle cx="863.27" cy="248" r="2.2" fill="#dde2ec" fill-opacity="0.55" />
+</svg>
