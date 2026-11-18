@@ -70,7 +70,7 @@ export function InteractiveRepoDemo({ repo }: InteractiveDemoProps) {
 }
 
 /* ============================================================================
- * 1. TACHYON-FETCH (sifr-salahy/tachyon-fetch/src/config.rs)
+ * 1. TACHYON-FETCH (Sifr-dev/tachyon-fetch/src/config.rs)
  * Exact 6 BUILTIN_THEMES RGB palettes + dark/light variants + MODULE_GLYPHS
  * ==========================================================================*/
 const TACHYON_THEMES = {
@@ -271,7 +271,7 @@ function TachyonFetchDemo() {
 }
 
 /* ============================================================================
- * 2. SIFR-ML-SYSTEMS (sifr-salahy/sifr-ml-systems/EVIDENCE.md)
+ * 2. SIFR-ML-SYSTEMS (Sifr-dev/sifr-ml-systems/EVIDENCE.md)
  * RMSNorm + FlashAttention-style Triton/SDPA verified timings + CLI cmd
  * ==========================================================================*/
 type MlSuite = 'rmsnorm' | 'attention';
@@ -451,7 +451,7 @@ function MlSystemsDemo() {
 }
 
 /* ============================================================================
- * 3. VERREV (sifr-salahy/verrev)
+ * 3. VERREV (Sifr-dev/verrev)
  * Exact 7-layer architecture status from README.md + XOR Probe + Capability ACL
  * ==========================================================================*/
 const VERREV_LAYERS = [
@@ -655,7 +655,7 @@ function VerrevDemo() {
 }
 
 /* ============================================================================
- * 4. SIFR-NATIVE (sifr-salahy/sifr-native/src/ring.comp & README.md)
+ * 4. SIFR-NATIVE (Sifr-dev/sifr-native/src/ring.comp & README.md)
  * Real WebGL2 GLSL fragment shader pipeline executing ring.comp math + Canvas2D fallback
  * ==========================================================================*/
 const RING_VERT_SHADER = `#version 300 es
@@ -972,7 +972,7 @@ function SifrNativeDemo() {
 }
 
 /* ============================================================================
- * 5. GREENLENS (sifr-salahy/GreenLens/artifacts/test_report.json & disease_info.json)
+ * 5. GREENLENS (Sifr-dev/GreenLens/artifacts/test_report.json & disease_info.json)
  * Authentic Rust egui split card + clickable Top-3 focused guidance selector
  * ==========================================================================*/
 const GREENLENS_SAMPLES = [
@@ -1141,7 +1141,7 @@ function GreenLensDemo() {
 }
 
 /* ============================================================================
- * 6. CHURN_ANALYTICS_ENGINE (sifr-salahy/churn_analytics_engine/src/inference.py & api/churn.py)
+ * 6. CHURN_ANALYTICS_ENGINE (Sifr-dev/churn_analytics_engine/src/inference.py & api/churn.py)
  * ==========================================================================*/
 function ChurnEngineDemo() {
   const [tenure, setTenure] = useState(12);
@@ -1265,7 +1265,7 @@ function ChurnEngineDemo() {
 }
 
 /* ============================================================================
- * 7. MALLOC_ALLOCATOR (sifr-salahy/malloc_allocator/src/malloc.c)
+ * 7. MALLOC_ALLOCATOR (Sifr-dev/malloc_allocator/src/malloc.c)
  * Real WebAssembly.Memory (64KiB linear buffer) + 24B header_t + coalescing + hex inspector
  * ==========================================================================*/
 function MallocAllocatorDemo() {
@@ -1465,7 +1465,7 @@ function MallocAllocatorDemo() {
 }
 
 /* ============================================================================
- * 8. REDIS_CLONE (sifr-salahy/redis_clone/main.go + internal/store.go)
+ * 8. REDIS_CLONE (Sifr-dev/redis_clone/main.go + internal/store.go)
  * ==========================================================================*/
 function RedisCloneDemo() {
   const [store, setStore] = useState<Record<string, string>>({
@@ -1560,7 +1560,7 @@ function RedisCloneDemo() {
 }
 
 /* ============================================================================
- * 9. SYSMON_DAEMON (sifr-salahy/sysmon_daemon/internal/telemetry.go & main.go)
+ * 9. SYSMON_DAEMON (Sifr-dev/sysmon_daemon/internal/telemetry.go & main.go)
  * Exact JSON field names {"cpu", "mem", "procs"} + /health + /proc raw lines
  * ==========================================================================*/
 function SysmonDaemonDemo() {
@@ -1627,7 +1627,7 @@ function SysmonDaemonDemo() {
 }
 
 /* ============================================================================
- * 10. GO_DB (sifr-salahy/GO_DB/internal/delivery/handler/router.go)
+ * 10. GO_DB (Sifr-dev/GO_DB/internal/delivery/handler/router.go)
  * Interactive Hexagonal Request + JWT Role + Redis 7 Rate Limiter Simulator
  * ==========================================================================*/
 const GODB_ROUTES = [
@@ -1746,7 +1746,7 @@ function GoDbHexDemo() {
 }
 
 /* ============================================================================
- * 11. TASK_MANAGER_CLI (sifr-salahy/task_manager_cli/internal/task.go & api/tasks/index.go)
+ * 11. TASK_MANAGER_CLI (Sifr-dev/task_manager_cli/internal/task.go & api/tasks/index.go)
  * Exact initial tasks (#1 Initialize neural network, #2 Deploy microservices) + shared HTTP API
  * ==========================================================================*/
 function TaskManagerCliDemo() {
@@ -1824,7 +1824,7 @@ function TaskManagerCliDemo() {
 }
 
 /* ============================================================================
- * 12. SIFR (sifr-salahy/SIFR)
+ * 12. SIFR (Sifr-dev/SIFR)
  * Interactive 24-cell Alberti cipher wheel & spring detent physics bench
  * ==========================================================================*/
 function SifrCipherDemo() {
