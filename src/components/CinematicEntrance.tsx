@@ -537,7 +537,7 @@ export function CinematicEntrance({
         </div>
 
         <div className="hidden md:block text-[14px] font-medium text-[#b9bec7] whitespace-nowrap">
-          Mohamed Salahi · Original Systems Exhibition
+          Mohamed Salahy · Original Systems Exhibition
         </div>
 
         <div className="flex items-center gap-3 shrink-0">

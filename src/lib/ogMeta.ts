@@ -10,11 +10,11 @@ export interface SceneMetadata {
 }
 
 const DEFAULT_META: SceneMetadata = {
-  title: 'SIFR | Built From Zero | Mohamed Salahi',
+  title: 'SIFR | Built From Zero | Mohamed Salahy',
   description:
-    'Systems, machine learning, and native graphics portfolio of Mohamed Salahi (SIFR). Twenty public repositories built from first principles.',
-  ogTitle: 'SIFR | Built From Zero | Mohamed Salahi',
-  ogDescription: 'Systems, machine learning, and native graphics portfolio of Mohamed Salahi (SIFR).',
+    'Systems, machine learning, and native graphics portfolio of Mohamed Salahy (SIFR). Twenty public repositories built from first principles.',
+  ogTitle: 'SIFR | Built From Zero | Mohamed Salahy',
+  ogDescription: 'Systems, machine learning, and native graphics portfolio of Mohamed Salahy (SIFR).',
   matchedRepoId: null,
 };
 
@@ -35,7 +35,7 @@ export function resolveSceneMetadata(sceneParam: string | null | undefined): Sce
 
   const story = REPO_STORIES[repo.id];
   const chapterPrefix = story ? `Part ${story.stationNumber}` : repo.categoryLabel;
-  const title = `${repo.name} · ${chapterPrefix} | SIFR · Mohamed Salahi`;
+  const title = `${repo.name} · ${chapterPrefix} | SIFR · Mohamed Salahy`;
   const description = story
     ? `${story.chapterTitle}: ${repo.proofMetric}. ${story.openingHook}`
     : `${repo.subtitle}: ${repo.summary}`;

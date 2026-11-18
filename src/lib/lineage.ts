@@ -17,7 +17,7 @@ export interface RepoLineageSpec {
 export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   GO_DB: {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/GO_DB.git && cd GO_DB && go test ./... && go run ./cmd/server',
+      'git clone https://github.com/sifr-salahy/GO_DB.git && cd GO_DB && go test ./... && go run ./cmd/server',
     feedsInto: ['churn_analytics_engine', 'verrev'],
     stages: [
       { step: '01', label: 'Redis Rate Limiter', detail: 'Sliding window cap per IP', metric: 'RAM hit' },
@@ -28,7 +28,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   churn_analytics_engine: {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/churn_analytics_engine.git && cd churn_analytics_engine && python3 -m unittest && python3 inference.py',
+      'git clone https://github.com/sifr-salahy/churn_analytics_engine.git && cd churn_analytics_engine && python3 -m unittest && python3 inference.py',
     feedsInto: ['GreenLens', 'sifr-ml-systems'],
     stages: [
       { step: '01', label: 'Feature Vector', detail: 'Normalize account tenure and spend', metric: '0 deps' },
@@ -39,7 +39,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   task_manager_cli: {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/task_manager_cli.git && cd task_manager_cli && go test ./... && go run ./cmd/cli',
+      'git clone https://github.com/sifr-salahy/task_manager_cli.git && cd task_manager_cli && go test ./... && go run ./cmd/cli',
     feedsInto: ['GO_DB'],
     stages: [
       { step: '01', label: 'CLI / HTTP Router', detail: 'Terminal and REST handlers', metric: 'dual entry' },
@@ -50,7 +50,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   malloc_allocator: {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/malloc_allocator.git && cd malloc_allocator && gcc -O2 -pthread -Wall malloc.c -o alloc && ./alloc',
+      'git clone https://github.com/sifr-salahy/malloc_allocator.git && cd malloc_allocator && gcc -O2 -pthread -Wall malloc.c -o alloc && ./alloc',
     feedsInto: ['redis_clone', 'verrev'],
     stages: [
       { step: '01', label: 'pthread_mutex_lock', detail: 'Lock global heap list', metric: '~18ns' },
@@ -61,7 +61,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   redis_clone: {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/redis_clone.git && cd redis_clone && go test -race ./... && go run .',
+      'git clone https://github.com/sifr-salahy/redis_clone.git && cd redis_clone && go test -race ./... && go run .',
     feedsInto: ['GO_DB'],
     stages: [
       { step: '01', label: 'TCP 6379 Accept', detail: 'Per-client goroutine loop', metric: '164k ops/s' },
@@ -72,7 +72,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   sysmon_daemon: {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/sysmon_daemon.git && cd sysmon_daemon && go test ./... && go run .',
+      'git clone https://github.com/sifr-salahy/sysmon_daemon.git && cd sysmon_daemon && go test ./... && go run .',
     feedsInto: ['tachyon-fetch'],
     stages: [
       { step: '01', label: '/proc/stat Read', detail: 'Parse kernel CPU tick deltas', metric: '0 forks' },
@@ -83,7 +83,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   verrev: {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/verrev.git && cd verrev && cargo test --workspace',
+      'git clone https://github.com/sifr-salahy/verrev.git && cd verrev && cargo test --workspace',
     feedsInto: ['SIFR', 'sifr-crypt'],
     stages: [
       { step: '01', label: 'ML-KEM-1024', detail: 'Crate-free lattice handshake', metric: 'NIST L5' },
@@ -94,7 +94,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   GreenLens: {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/GreenLens.git && cd GreenLens && cargo run --release',
+      'git clone https://github.com/sifr-salahy/GreenLens.git && cd GreenLens && cargo run --release',
     feedsInto: ['sifr-ml-systems'],
     stages: [
       { step: '01', label: 'Rust egui Window', detail: 'Open leaf photo locally', metric: 'native' },
@@ -105,7 +105,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   'tachyon-fetch': {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/tachyon-fetch.git && cd tachyon-fetch && cargo test --release && cargo run --release',
+      'git clone https://github.com/sifr-salahy/tachyon-fetch.git && cd tachyon-fetch && cargo test --release && cargo run --release',
     feedsInto: ['sifr-native'],
     stages: [
       { step: '01', label: 'sysfs / procfs', detail: 'Direct kernel file reads', metric: '0 forks' },
@@ -116,7 +116,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   'sifr-ml-systems': {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/sifr-ml-systems.git && cd sifr-ml-systems && pytest',
+      'git clone https://github.com/sifr-salahy/sifr-ml-systems.git && cd sifr-ml-systems && pytest',
     feedsInto: ['sifr-native'],
     stages: [
       { step: '01', label: 'SRAM Tiling', detail: 'Keep Q*K^T inside GPU SRAM', metric: 'tiled' },
@@ -127,7 +127,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   'sifr-native': {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/sifr-native.git && cd sifr-native && zig build test && zig build run',
+      'git clone https://github.com/sifr-salahy/sifr-native.git && cd sifr-native && zig build test && zig build run',
     feedsInto: ['sifr-apps', 'SIFR'],
     stages: [
       { step: '01', label: 'Wayland Wire', detail: 'Handwritten Unix socket protocol', metric: '0 C glue' },
@@ -138,7 +138,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   SIFR: {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/SIFR.git && cd SIFR && npm install && npm run build',
+      'git clone https://github.com/sifr-salahy/SIFR.git && cd SIFR && npm install && npm run build',
     feedsInto: ['sifr-apps', 'sifr-serve'],
     stages: [
       { step: '01', label: '24-Cell Shutter', detail: 'Alberti cipher ring at 15 deg', metric: 'shift 0' },
@@ -149,7 +149,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   'sifr-apps': {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/sifr-apps.git && cd sifr-apps && zig build',
+      'git clone https://github.com/sifr-salahy/sifr-apps.git && cd sifr-apps && zig build',
     feedsInto: [],
     stages: [
       { step: '01', label: 'Cipher Path Dep', detail: 'Consume sifr-native directly', metric: 'libc only' },
@@ -160,7 +160,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   'sifr-probe': {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/sifr-probe.git && cd sifr-probe && make && ./sifrprobe 127.0.0.1:80 -n 5',
+      'git clone https://github.com/sifr-salahy/sifr-probe.git && cd sifr-probe && make && ./sifrprobe 127.0.0.1:80 -n 5',
     feedsInto: [],
     stages: [
       { step: '01', label: 'POSIX Socket', detail: 'Open non-blocking TCP stream', metric: 'C++17' },
@@ -171,7 +171,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   'sifr-query': {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/sifr-query.git && cd sifr-query && cargo build --release',
+      'git clone https://github.com/sifr-salahy/sifr-query.git && cd sifr-query && cargo build --release',
     feedsInto: [],
     stages: [
       { step: '01', label: 'CSV Stream', detail: 'Read rows from file or stdin', metric: 'O(1) mem' },
@@ -182,7 +182,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   'sifr-crypt': {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/sifr-crypt.git && cd sifr-crypt && g++ -O2 -std=c++17 *.cpp -o sifr-crypt && ./sifr-crypt sha256 --selftest',
+      'git clone https://github.com/sifr-salahy/sifr-crypt.git && cd sifr-crypt && g++ -O2 -std=c++17 *.cpp -o sifr-crypt && ./sifr-crypt sha256 --selftest',
     feedsInto: [],
     stages: [
       { step: '01', label: '512-Bit Pad', detail: 'Append 1-bit and length tail', metric: 'FIPS 180-4' },
@@ -193,7 +193,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   'sifr-md': {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/sifr-md.git && cd sifr-md && cargo run -- README.md',
+      'git clone https://github.com/sifr-salahy/sifr-md.git && cd sifr-md && cargo run -- README.md',
     feedsInto: [],
     stages: [
       { step: '01', label: 'UTF-8 Line Scan', detail: 'Read stdin or Markdown file', metric: '1 pass' },
@@ -204,7 +204,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   'sifr-inflate': {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/sifr-inflate.git && cd sifr-inflate && cargo test',
+      'git clone https://github.com/sifr-salahy/sifr-inflate.git && cd sifr-inflate && cargo test',
     feedsInto: [],
     stages: [
       { step: '01', label: 'Gzip Header', detail: 'Verify magic bytes and flags', metric: 'RFC 1952' },
@@ -215,7 +215,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   'sifr-diff': {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/sifr-diff.git && cd sifr-diff && cargo test',
+      'git clone https://github.com/sifr-salahy/sifr-diff.git && cd sifr-diff && cargo test',
     feedsInto: [],
     stages: [
       { step: '01', label: 'Line Tokenize', detail: 'Read both files or stdin', metric: 'Rust' },
@@ -226,7 +226,7 @@ export const REPO_LINEAGE: Record<string, RepoLineageSpec> = {
   },
   'sifr-serve': {
     buildCommand:
-      'git clone https://github.com/mohamedsalahi/sifr-serve.git && cd sifr-serve && cargo run -- . --port 8080',
+      'git clone https://github.com/sifr-salahy/sifr-serve.git && cd sifr-serve && cargo run -- . --port 8080',
     feedsInto: [],
     stages: [
       { step: '01', label: 'TcpListener', detail: 'Spawn worker thread per req', metric: 'HTTP/1.1' },
@@ -243,7 +243,7 @@ export function getLineageForRepo(repoId: string): RepoLineageSpec {
   const ciKey = Object.keys(REPO_LINEAGE).find((k) => k.toLowerCase() === repoId.toLowerCase());
   if (ciKey) return REPO_LINEAGE[ciKey];
   return {
-    buildCommand: `git clone https://github.com/mohamedsalahi/${repoId}.git && cd ${repoId}`,
+    buildCommand: `git clone https://github.com/sifr-salahy/${repoId}.git && cd ${repoId}`,
     feedsInto: [],
     stages: [
       { step: '01', label: 'Repository Fetch', detail: 'Cloned from GitHub', metric: 'live' },

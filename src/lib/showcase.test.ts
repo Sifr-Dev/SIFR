@@ -31,7 +31,7 @@ test('validateSignalPayload and buildSignalMailto format verified direct dispatc
   assert.equal(validateSignalPayload(payload).valid, true);
 
   const mailto = buildSignalMailto(payload);
-  assert.ok(mailto.startsWith('mailto:mohamedabdullahsalahi@gmail.com?subject='));
+  assert.ok(mailto.startsWith('mailto:mohamedabdullahsalahy@proton.me?subject='));
   assert.ok(mailto.includes('Elena%20Vance'));
 
   const receipt = generateDispatchReceiptId(payload);

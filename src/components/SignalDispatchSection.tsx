@@ -198,7 +198,7 @@ export function SignalDispatchSection({ compact = false }: SignalDispatchSection
               </div>
               <p className="text-xs text-[#e4e8f1]">
                 {receipt.deliveredVia === 'resend'
-                  ? 'Delivered to Mohamed Salahi via Resend.'
+                  ? 'Delivered to Mohamed Salahy via Resend.'
                   : receipt.deliveredVia === 'ledger'
                     ? 'Recorded on the server. You can also send via your email client.'
                     : 'Open your email client below or copy the address above.'}
