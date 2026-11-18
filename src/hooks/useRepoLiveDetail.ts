@@ -16,7 +16,7 @@ export interface LiveRepoDetail {
 
 const detailCache = new Map<string, LiveRepoDetail>();
 
-export function useRepoLiveDetail(repoName: string, owner = 'sifr-salahy'): LiveRepoDetail {
+export function useRepoLiveDetail(repoName: string, owner = 'Sifr-Dev'): LiveRepoDetail {
   const cacheKey = `${owner}/${repoName}`.toLowerCase();
   const [detail, setDetail] = useState<LiveRepoDetail>(
     () =>
