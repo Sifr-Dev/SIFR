@@ -101,9 +101,9 @@ async function fetchOverviewPayload(): Promise<OverviewCacheEntry> {
   try {
     const headers = githubHeaders();
     const [userRes, reposRes, eventsRes] = await Promise.all([
-      fetch('https://api.github.com/users/Sifr-dev', { headers }),
-      fetch('https://api.github.com/users/Sifr-dev/repos?per_page=100&sort=pushed', { headers }),
-      fetch('https://api.github.com/users/Sifr-dev/events/public?per_page=20', { headers }),
+      fetch('https://api.github.com/users/Sifr-Dev', { headers }),
+      fetch('https://api.github.com/users/Sifr-Dev/repos?per_page=100&sort=pushed', { headers }),
+      fetch('https://api.github.com/users/Sifr-Dev/events/public?per_page=20', { headers }),
     ]);
 
     if (
@@ -184,7 +184,7 @@ async function fetchOverviewPayload(): Promise<OverviewCacheEntry> {
       }>;
       if (Array.isArray(evList) && evList.length > 0) {
         activity = evList.slice(0, 8).map((ev) => {
-          const rawRepo = ev.repo?.name ?? 'Sifr-dev/SIFR';
+          const rawRepo = ev.repo?.name ?? 'Sifr-Dev/SIFR';
           const shortRepo = rawRepo.includes('/') ? rawRepo.split('/')[1] : rawRepo;
           return {
             id: ev.id,
@@ -236,8 +236,8 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
   try {
     const headers = githubHeaders();
     const [commitRes, contentsRes] = await Promise.all([
-      fetch(`https://api.github.com/repos/Sifr-dev/${cleanName}/commits?per_page=100`, { headers }),
-      fetch(`https://api.github.com/repos/Sifr-dev/${cleanName}/contents`, { headers }),
+      fetch(`https://api.github.com/repos/Sifr-Dev/${cleanName}/commits?per_page=100`, { headers }),
+      fetch(`https://api.github.com/repos/Sifr-Dev/${cleanName}/contents`, { headers }),
     ]);
 
     if (
@@ -276,7 +276,7 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
             sha: top.sha.slice(0, 7),
             message: (top.commit?.message ?? 'Updated repository').split('\n')[0].trim(),
             date: top.commit?.author?.date ?? '',
-            author: top.commit?.author?.name ?? 'Sifr-dev',
+            author: top.commit?.author?.name ?? 'Sifr-Dev',
           };
         }
       }
