@@ -16,7 +16,7 @@ export interface SignalValidationResult {
   error?: string;
 }
 
-export const SIFR_DIRECT_EMAIL = 'mohamedabdullahsalahi@gmail.com';
+export const SIFR_DIRECT_EMAIL = 'mohamedabdullahsalahy@proton.me';
 
 export const SIGNAL_TOPICS: readonly SignalTopic[] = [
   'Systems & Kernel Architecture',

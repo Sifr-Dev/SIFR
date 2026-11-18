@@ -172,7 +172,7 @@ export function ReadmeShowcase({ repoName, story, compact = false }: ReadmeShowc
       <div className="border border-[#2d3038] bg-[#04060b] p-4 sm:p-5 space-y-3">
         <div className="text-xs font-semibold text-[#a6acb9] pb-2 border-b border-[#2d3038]">
           {sourceMode === 'upstream' && liveDetail.rawReadme
-            ? `Synced from github.com/mohamedsalahi/${repoName}`
+            ? `Synced from github.com/sifr-salahy/${repoName}`
             : 'Publication Markdown Blueprint'}
         </div>
 

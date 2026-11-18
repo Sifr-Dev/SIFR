@@ -603,7 +603,7 @@ export function TimelineCanvas({
           >
             <div className="space-y-3">
               <div className="font-mobilis text-[13px] font-semibold text-[#eab444] tracking-wider">
-                Mohamed Salahi
+                Mohamed Salahy
               </div>
               <h1 className="font-stabilis text-6xl font-extrabold tracking-tight text-[#ffffff]">
                 SIFR
@@ -780,7 +780,7 @@ export function TimelineCanvas({
           >
             <div className="space-y-5">
               <div className="font-mobilis text-[13px] font-semibold text-[#eab444] tracking-wider">
-                Mohamed Salahi
+                Mohamed Salahy
               </div>
               <h1 className="font-stabilis text-7xl lg:text-8xl font-extrabold tracking-tight text-[#ffffff]">
                 SIFR

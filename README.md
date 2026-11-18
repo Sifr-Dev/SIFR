@@ -7,7 +7,7 @@
 
 # SIFR — Built From Zero
 
-Mohamed Salahi's portfolio: systems, machine learning and native graphics —
+Mohamed Salahy's portfolio: systems, machine learning and native graphics —
 11 public repositories, interactive engineering labs, and 2D polar cipher
 physics. built from zero.
 
