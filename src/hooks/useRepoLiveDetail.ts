@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SIFR_GITHUB_OWNER } from '../lib/identity';
 
 export interface LiveRepoCommit {
   sha: string;
@@ -16,7 +17,7 @@ export interface LiveRepoDetail {
 
 const detailCache = new Map<string, LiveRepoDetail>();
 
-export function useRepoLiveDetail(repoName: string, owner = 'Sifr-Dev'): LiveRepoDetail {
+export function useRepoLiveDetail(repoName: string, owner = SIFR_GITHUB_OWNER): LiveRepoDetail {
   const cacheKey = `${owner}/${repoName}`.toLowerCase();
   const [detail, setDetail] = useState<LiveRepoDetail>(
     () =>

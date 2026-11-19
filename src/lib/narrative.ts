@@ -1,3 +1,5 @@
+import { resolveCanonicalRepoId } from './identity';
+
 export type ActId = 'act-1' | 'act-2' | 'act-3' | 'act-4';
 
 export interface ActDefinition {
@@ -9,45 +11,40 @@ export interface ActDefinition {
   stationIds: string[];
 }
 
-/**
- * Conceptual story progression across all 20 repositories:
- * moving from application architecture and raw sockets, through ML math and GPU kernels,
- * down into heap memory, kernel telemetry, and cryptography, and finally building zero-dependency tools and native UI.
- */
 export const CANONICAL_ACTS: ActDefinition[] = [
   {
     id: 'act-1',
     roman: 'Part I',
     title: 'First Systems',
-    subtitle: 'Starting from layered backends, concurrent stores, raw TCP sockets, and measuring latency.',
+    subtitle: 'Starting from layered backends, concurrent stores, bounded TCP framing, and measuring latency.',
     timeframe: 'Web and Sockets',
     stationIds: [
-      'GO_DB',
-      'task_manager_cli',
-      'redis_clone',
-      'sifr-serve',
-      'sifr-probe',
+      'mizan',
+      'lockstep',
+      'redwire',
+      'barehttp',
+      'wireprobe',
     ],
   },
   {
     id: 'act-2',
     roman: 'Part II',
     title: 'Math to Silicon',
-    subtitle: 'Moving from 300-byte Python inference to desktop vision models and custom GPU kernels.',
+    subtitle: 'Moving from stdlib logistic scoring to native desktop vision models and fused Triton/XLA kernels.',
     timeframe: 'Models and Metal',
-    stationIds: ['churn_analytics_engine', 'GreenLens', 'sifr-ml-systems'],
+    stationIds: ['logitrisk', 'GreenLens', 'subtorch'],
   },
   {
     id: 'act-3',
     roman: 'Part III',
     title: 'Memory and Trust',
-    subtitle: 'Looking underneath abstractions: heap blocks, Linux /proc, SHA-256, and capability security.',
+    subtitle: 'Dropping beneath abstractions: POSIX sbrk heaps, Linux /proc, FIPS SHA-256, and post-quantum primitives.',
     timeframe: 'Kernel and Crypto',
     stationIds: [
-      'malloc_allocator',
-      'sysmon_daemon',
+      'freelist',
+      'procstatd',
       'tachyon-fetch',
-      'sifr-crypt',
+      'sha-zero',
       'verrev',
     ],
   },
@@ -55,15 +52,15 @@ export const CANONICAL_ACTS: ActDefinition[] = [
     id: 'act-4',
     roman: 'Part IV',
     title: 'Crafted From Zero',
-    subtitle: 'Zero-dependency Unix tools, a Zig Wayland/Vulkan UI toolkit, native apps, and this canvas.',
+    subtitle: 'Zero-crate Unix utilities, the Zig Wayland/Vulkan Cipher toolkit, CipherDesk apps, and this site.',
     timeframe: 'Tools and Native UI',
     stationIds: [
-      'sifr-query',
-      'sifr-md',
-      'sifr-inflate',
-      'sifr-diff',
-      'sifr-native',
-      'sifr-apps',
+      'rowscan',
+      'glyphmd',
+      'huffstream',
+      'hunkdiff',
+      'Cipher',
+      'CipherDesk',
       'SIFR',
     ],
   },
@@ -183,8 +180,10 @@ export function restartRide(): RideState {
 }
 
 export function getActForRepoId(repoId: string): ActDefinition {
-  const lower = repoId.toLowerCase();
-  const found = CANONICAL_ACTS.find((act) => act.stationIds.some((s) => s.toLowerCase() === lower));
+  const canonical = resolveCanonicalRepoId(repoId).toLowerCase();
+  const found = CANONICAL_ACTS.find((act) =>
+    act.stationIds.some((s) => s.toLowerCase() === canonical || s.toLowerCase() === repoId.toLowerCase())
+  );
   return found ?? CANONICAL_ACTS[CANONICAL_ACTS.length - 1];
 }
 
@@ -249,9 +248,12 @@ export function resolveSceneParam<T extends { id: string }>(
 ): RideState {
   if (!search) return state;
   const params = new URLSearchParams(search.startsWith('?') ? search : `?${search}`);
-  const sceneId = params.get('scene')?.trim().toLowerCase();
-  if (!sceneId) return state;
-  const idx = orderedRepos.findIndex((r) => r.id.toLowerCase() === sceneId);
+  const rawScene = params.get('scene')?.trim();
+  if (!rawScene) return state;
+  const canonical = resolveCanonicalRepoId(rawScene).toLowerCase();
+  const idx = orderedRepos.findIndex(
+    (r) => r.id.toLowerCase() === canonical || r.id.toLowerCase() === rawScene.toLowerCase()
+  );
   if (idx < 0) return state;
   if (!canAccessStation(state, idx, orderedRepos.length)) return state;
   return {

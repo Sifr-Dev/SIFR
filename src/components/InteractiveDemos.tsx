@@ -17,6 +17,7 @@ import {
 } from '../lib/simulations';
 import { haptics } from '../lib/haptics';
 import { decodeRingAtShift, normalizeShift } from '../lib/cipher';
+import { resolveCanonicalRepoId } from '../lib/identity';
 import type { RepoSpec } from '../data/repos';
 import { PhysicsCipherCanvas } from './PhysicsCipherCanvas';
 
@@ -25,41 +26,42 @@ interface InteractiveDemoProps {
 }
 
 export function InteractiveRepoDemo({ repo }: InteractiveDemoProps) {
-  switch (repo.id) {
+  const canonicalId = resolveCanonicalRepoId(repo.id);
+  switch (canonicalId) {
     case 'tachyon-fetch':
       return <TachyonFetchDemo />;
-    case 'sifr-ml-systems':
+    case 'subtorch':
       return <MlSystemsDemo />;
     case 'verrev':
       return <VerrevDemo />;
-    case 'sifr-native':
+    case 'Cipher':
       return <SifrNativeDemo />;
     case 'GreenLens':
       return <GreenLensDemo />;
-    case 'churn_analytics_engine':
+    case 'logitrisk':
       return <ChurnEngineDemo />;
-    case 'malloc_allocator':
+    case 'freelist':
       return <MallocAllocatorDemo />;
-    case 'redis_clone':
+    case 'redwire':
       return <RedisCloneDemo />;
-    case 'sysmon_daemon':
+    case 'procstatd':
       return <SysmonDaemonDemo />;
-    case 'GO_DB':
+    case 'mizan':
       return <GoDbHexDemo />;
-    case 'task_manager_cli':
+    case 'lockstep':
       return <TaskManagerCliDemo />;
     case 'SIFR':
       return <SifrCipherDemo />;
-    case 'sifr-apps':
+    case 'CipherDesk':
       return <SifrAppsDemo />;
-    case 'sifr-probe':
-    case 'sifr-query':
-    case 'sifr-crypt':
-    case 'sifr-md':
-    case 'sifr-inflate':
-    case 'sifr-diff':
-    case 'sifr-serve':
-      return <SifrCliToolDemo repoId={repo.id} />;
+    case 'wireprobe':
+    case 'rowscan':
+    case 'sha-zero':
+    case 'glyphmd':
+    case 'huffstream':
+    case 'hunkdiff':
+    case 'barehttp':
+      return <SifrCliToolDemo repoId={canonicalId} />;
     default:
       return (
         <pre className="border border-[#2d3038] bg-[#04060b] p-4 font-mobilis text-xs text-[#b9bec7] overflow-x-auto">
@@ -271,7 +273,7 @@ function TachyonFetchDemo() {
 }
 
 /* ============================================================================
- * 2. SIFR-ML-SYSTEMS (Sifr-Dev/sifr-ml-systems/EVIDENCE.md)
+ * 2. SUBTORCH (Sifr-Dev/subtorch/EVIDENCE.md)
  * RMSNorm + FlashAttention-style Triton/SDPA verified timings + CLI cmd
  * ==========================================================================*/
 type MlSuite = 'rmsnorm' | 'attention';
@@ -452,23 +454,23 @@ function MlSystemsDemo() {
 
 /* ============================================================================
  * 3. VERREV (Sifr-Dev/verrev)
- * Exact 7-layer architecture status from README.md + XOR Probe + Capability ACL
+ * Exact workspace crate status + XOR Probe + Capability ACL
  * ==========================================================================*/
 const VERREV_LAYERS = [
   {
-    name: 'L0 · Foundation',
-    crates: 'verrev-syscall (raw Linux shims) · verrev-hash (SHA3-256/512, SHAKE128/256)',
-    status: 'KAT-verified · LFSR RC formula',
+    name: 'L0 · Hashing & Syscalls',
+    crates: 'verrev-hash (SHA3-256/512, SHAKE128/256) · verrev-fs · verrev-relay',
+    status: 'KAT-verified · 48 workspace tests pass',
   },
   {
-    name: 'L1 · PQ Crypto & Identity',
+    name: 'L1 · PQ Crypto & Capability',
     crates: 'verrev-crypto (ML-KEM-1024 10t, ML-DSA-87 11t, XChaCha20 6t) · verrev-identity · verrev-capability',
-    status: '27 crypto tests pass',
+    status: '27 crypto tests pass across 7 crates',
   },
   {
-    name: 'L2 & L4 · Store & P2P Mesh',
-    crates: 'verrev-store (ContentStore BTreeMap) · verrev-p2p (256 KBuckets XOR) · verrev-db (KvStore, Queue)',
-    status: '31/31 workspace tests pass',
+    name: 'L2+ · Prototype Shells (Stubbed)',
+    crates: 'verrev-transport · verrev-p2p (find_closest stub) · verrev-mesh · verrev-sync (no-op CRDT) · verrev-runtime',
+    status: 'Early prototype interface shells',
   },
 ];
 
@@ -655,8 +657,8 @@ function VerrevDemo() {
 }
 
 /* ============================================================================
- * 4. SIFR-NATIVE (Sifr-Dev/sifr-native/src/ring.comp & README.md)
- * Real WebGL2 GLSL fragment shader pipeline executing ring.comp math + Canvas2D fallback
+ * 4. CIPHER (Sifr-Dev/Cipher)
+ * Real WebGL2 GLSL fragment shader pipeline executing ring math + Canvas2D fallback
  * ==========================================================================*/
 const RING_VERT_SHADER = `#version 300 es
 in vec2 a_pos;
@@ -972,7 +974,7 @@ function SifrNativeDemo() {
 }
 
 /* ============================================================================
- * 5. GREENLENS (Sifr-Dev/GreenLens/artifacts/test_report.json & disease_info.json)
+ * 5. GREENLENS (Sifr-Dev/GreenLens)
  * Authentic Rust egui split card + clickable Top-3 focused guidance selector
  * ==========================================================================*/
 const GREENLENS_SAMPLES = [
@@ -1141,7 +1143,7 @@ function GreenLensDemo() {
 }
 
 /* ============================================================================
- * 6. CHURN_ANALYTICS_ENGINE (Sifr-Dev/churn_analytics_engine/src/inference.py & api/churn.py)
+ * 6. LOGITRISK (Sifr-Dev/logitrisk)
  * ==========================================================================*/
 function ChurnEngineDemo() {
   const [tenure, setTenure] = useState(12);
@@ -1265,7 +1267,7 @@ function ChurnEngineDemo() {
 }
 
 /* ============================================================================
- * 7. MALLOC_ALLOCATOR (Sifr-Dev/malloc_allocator/src/malloc.c)
+ * 7. FREELIST (Sifr-Dev/freelist)
  * Real WebAssembly.Memory (64KiB linear buffer) + 24B header_t + coalescing + hex inspector
  * ==========================================================================*/
 function MallocAllocatorDemo() {
@@ -1465,7 +1467,7 @@ function MallocAllocatorDemo() {
 }
 
 /* ============================================================================
- * 8. REDIS_CLONE (Sifr-Dev/redis_clone/main.go + internal/store.go)
+ * 8. REDWIRE (Sifr-Dev/redwire)
  * ==========================================================================*/
 function RedisCloneDemo() {
   const [store, setStore] = useState<Record<string, string>>({
@@ -1560,7 +1562,7 @@ function RedisCloneDemo() {
 }
 
 /* ============================================================================
- * 9. SYSMON_DAEMON (Sifr-Dev/sysmon_daemon/internal/telemetry.go & main.go)
+ * 9. PROCSTATD (Sifr-Dev/procstatd)
  * Exact JSON field names {"cpu", "mem", "procs"} + /health + /proc raw lines
  * ==========================================================================*/
 function SysmonDaemonDemo() {
@@ -1610,7 +1612,7 @@ function SysmonDaemonDemo() {
       </div>
 
       <div className="text-[11px] text-[#9498a1] border border-[#2d3038] bg-[#0a0d13] px-3 py-2 truncate">
-        /proc/stat → {sample.jiffies}
+        /proc/stat -&gt; {sample.jiffies}
       </div>
 
       <pre className="text-[#f3f7fe] bg-[#0a0d13] p-3 border border-[#2d3038] overflow-x-auto">
@@ -1627,8 +1629,8 @@ function SysmonDaemonDemo() {
 }
 
 /* ============================================================================
- * 10. GO_DB (Sifr-Dev/GO_DB/internal/delivery/handler/router.go)
- * Interactive Hexagonal Request + JWT Role + Redis 7 Rate Limiter Simulator
+ * 10. MIZAN (Sifr-Dev/mizan)
+ * Interactive Hexagonal Request + Purpose-Bound HS256 Role + Fixed-Window Redis Limiter
  * ==========================================================================*/
 const GODB_ROUTES = [
   { method: 'GET', path: '/api/v1/tasks/', adminOnly: false, sqlc: 'ListTasksByUser(ctx, userID)' },
@@ -1650,23 +1652,23 @@ function GoDbHexDemo() {
 
   const layers = [
     {
-      layer: '1. Delivery (go-chi + JWT + Redis 7)',
+      layer: '1. Delivery (chi + HS256 JWT + Fixed-Window Redis)',
       detail: blockedRate
-        ? 'Redis sliding-window limit exceeded (100/100 req/min) -> 429 Too Many Requests'
+        ? 'Redis fixed-window counter exhausted -> 429 Too Many Requests'
         : blockedRbac
           ? `JWT role="${role}" rejected by AdminMiddleware -> 403 Forbidden`
-          : `JWT valid (role=${role}); Redis tokens=${rateRemaining}/100 -> passed to UseCase`,
+          : `HS256 valid (role=${role}, sid/jti bound); fixed-window tokens=${rateRemaining}/100 -> passed to UseCase`,
     },
     {
       layer: '2. Use Case (task_service / admin_service)',
-      detail: blockedRate || blockedRbac ? 'Aborted at Delivery guard.' : 'Pure domain invariants verified.',
+      detail: blockedRate || blockedRbac ? 'Aborted at Delivery guard.' : 'Application rules & ownership verified.',
     },
     {
       layer: '3. Domain (domain/task.go, domain/user.go)',
-      detail: blockedRate || blockedRbac ? 'Skipped.' : 'Zero external imports; entity rules enforced.',
+      detail: blockedRate || blockedRbac ? 'Skipped.' : 'Domain entities & interfaces (stdlib + google/uuid).',
     },
     {
-      layer: '4. Repository (sqlc + pgx/v5 PostgreSQL 16)',
+      layer: '4. Repository (sqlc + pgx/v5 PostgreSQL)',
       detail: blockedRate || blockedRbac ? 'No DB query executed.' : `sqlc: ${route.sqlc}`,
     },
   ];
@@ -1746,7 +1748,7 @@ function GoDbHexDemo() {
 }
 
 /* ============================================================================
- * 11. TASK_MANAGER_CLI (Sifr-Dev/task_manager_cli/internal/task.go & api/tasks/index.go)
+ * 11. LOCKSTEP (Sifr-Dev/lockstep)
  * Exact initial tasks (#1 Initialize neural network, #2 Deploy microservices) + shared HTTP API
  * ==========================================================================*/
 function TaskManagerCliDemo() {
@@ -1884,53 +1886,53 @@ function SifrCipherDemo() {
 }
 
 /* ============================================================================
- * 13. SIFR-APPS (rex, cipherterm, nocturne on Cipher)
+ * 13. CIPHERDESK (janus, rex, nocturne on Cipher)
  * ==========================================================================*/
 const CIPHER_APPS = [
   {
-    id: 'rex',
-    title: 'rex',
-    role: 'Unix-socket multiplexer + scriptable CLI',
-    command: 'rex split --vertical && rex send pane:1 "zig build"',
-    metric: 'Unix AF_UNIX IPC · 0 external deps',
+    id: 'janus',
+    title: 'janus',
+    role: 'Flagship GPU terminal built on Cipher (replaces older terminal prototypes)',
+    command: 'janus --theme void',
+    metric: 'Panes, Tabs, Themes, Live RSS',
     screen: [
-      '[session: main · 2 panes · socket /tmp/rex-1000.sock]',
-      '┌─ pane:0 (zsh) ────────────────┬─ pane:1 (zig) ────────────────┐',
-      '│ $ cd sifr-native              │ $ zig build test              │',
-      '│ $ ./zig-out/bin/cipherterm    │ All 24 protocol tests passed. │',
-      '└───────────────────────────────┴───────────────────────────────┘',
+      'janus [Cipher Vulkan WSI / wl_shm · themes: void / paper / ember]',
+      '> dlopen("libwayland-client.so.0")   OK',
+      '> dlopen("libvulkan.so.1")           144 Hz WSI / wl_shm fallback',
+      '> tabs: [0:shell] [1:zig-build]      live process RSS bound',
     ].join('\n'),
   },
   {
-    id: 'cipherterm',
-    title: 'cipherterm',
-    role: 'Vulkan GPU terminal client with panes and live RSS',
-    command: 'cipherterm --theme obsidian --hidpi 2.0',
-    metric: '12.4 MB RSS · Vulkan push_constants',
+    id: 'rex',
+    title: 'rex',
+    role: 'Unix-socket multiplexer engine being folded directly into CipherDesk apps',
+    command: 'rex split --vertical && rex send pane:1 "zig build"',
+    metric: 'AF_UNIX JSON-lines · 0600 perms',
     screen: [
-      'cipherterm [vulkan · 2x HiDPI · 12.4 MB RSS]',
-      '> wl_display.connect()            OK',
-      '> vkCreateSwapchainKHR()          144 Hz FIFO',
-      '> rex attach main                 2 panes linked',
+      '[session: main · 2 panes · socket /tmp/rex-1000.sock]',
+      '+-- pane:0 (zsh) -----------------+-- pane:1 (zig) ----------------+',
+      '| $ cd CipherDesk                 | $ zig build                    |',
+      '| $ ./zig-out/bin/janus           | All workspace targets built.   |',
+      '+---------------------------------+--------------------------------+',
     ].join('\n'),
   },
   {
     id: 'nocturne',
     title: 'nocturne',
-    role: 'Offline FLAC audio player built on Cipher',
-    command: 'nocturne ~/music/album/*.flac',
-    metric: '24-bit / 96 kHz · Gapless ALSA/PipeWire',
+    role: 'Offline FLAC audio player with from-zero decoder matching flac/ffmpeg on 6 fixtures',
+    command: 'nocturne ~/music/album/',
+    metric: 'Bit-exact FLAC · LRC/Vorbis lyrics · PulseAudio dlopen',
     screen: [
-      'nocturne [offline FLAC · 24-bit / 96 kHz]',
-      'Track 03 / 11 · Zero Network Access',
+      'nocturne [from-zero FLAC decoder · PulseAudio dlopen]',
+      'Track 03 / 11 · Zero Network Access · LRC/Vorbis lyrics synced',
       '[=================>----------] 02:41 / 04:18',
-      'Decoded purely local PCM frames on Cipher UI thread.',
+      'Bit-exact decoded PCM stream verified against reference flac/ffmpeg on 6 fixtures.',
     ].join('\n'),
   },
 ] as const;
 
 function SifrAppsDemo() {
-  const [selectedApp, setSelectedApp] = useState<'rex' | 'cipherterm' | 'nocturne'>('rex');
+  const [selectedApp, setSelectedApp] = useState<'janus' | 'rex' | 'nocturne'>('janus');
   const active = CIPHER_APPS.find((a) => a.id === selectedApp) ?? CIPHER_APPS[0];
 
   return (
@@ -1972,7 +1974,7 @@ function SifrAppsDemo() {
 }
 
 /* ============================================================================
- * 14. CLI SUITE (sifr-probe, sifr-query, sifr-crypt, sifr-md, sifr-inflate, sifr-diff, sifr-serve)
+ * 14. CLI SUITE (wireprobe, rowscan, sha-zero, glyphmd, huffstream, hunkdiff, barehttp)
  * ==========================================================================*/
 const CLI_TOOL_SPECS: Record<
   string,
@@ -1980,11 +1982,11 @@ const CLI_TOOL_SPECS: Record<
     presets: { label: string; cmd: string; output: string }[];
   }
 > = {
-  'sifr-probe': {
+  wireprobe: {
     presets: [
       {
         label: 'HTTP Latency',
-        cmd: 'sifrprobe api.github.com:80 -n 20 --http',
+        cmd: './wireprobe api.github.com:80 -n 20 --http',
         output: [
           'target: api.github.com:80 (20 samples)',
           'tcp connect  min 11.2ms  p50 14.1ms  p90 18.4ms  p99 22.9ms',
@@ -1993,16 +1995,16 @@ const CLI_TOOL_SPECS: Record<
       },
       {
         label: 'JSON Output',
-        cmd: 'sifrprobe localhost:3000 -n 10 --json',
+        cmd: './wireprobe localhost:3000 -n 10 --json',
         output: '{"host":"localhost:3000","samples":10,"p50_ms":0.24,"p90_ms":0.39,"p99_ms":0.52,"errors":0}',
       },
     ],
   },
-  'sifr-query': {
+  rowscan: {
     presets: [
       {
         label: 'Group & Sum',
-        cmd: 'sifr-query events.csv --where "status=200" --group-by route --sum bytes',
+        cmd: 'rowscan events.csv --where "status=200" --group-by route --sum bytes',
         output: [
           'route       | count | sum(bytes)',
           '------------+-------+-----------',
@@ -2012,21 +2014,21 @@ const CLI_TOOL_SPECS: Record<
       },
       {
         label: 'Top-N Filter',
-        cmd: 'sifr-query traces.csv --select service,p99_ms --sort-desc p99_ms --limit 3',
+        cmd: 'rowscan traces.csv --select service,p99_ms --sort-desc p99_ms --limit 3',
         output: [
           'service,p99_ms',
           'verrev-p2p,14.8',
-          'go_db-pgx,6.2',
-          'sifr-serve,0.4',
+          'mizan-pgx,6.2',
+          'barehttp,0.4',
         ].join('\n'),
       },
     ],
   },
-  'sifr-crypt': {
+  'sha-zero': {
     presets: [
       {
         label: 'FIPS 180-4 Self-Test',
-        cmd: './sifr-crypt sha256 --selftest',
+        cmd: './sha-zero sha256 --selftest',
         output: [
           'KAT ""              -> e3b0c44298fc1c149afbf4c8996fb924... [OK]',
           'KAT "abc"           -> ba7816bf8f01cfea414140de5dae2223... [OK]',
@@ -2036,26 +2038,26 @@ const CLI_TOOL_SPECS: Record<
       },
       {
         label: 'Hash Stdin',
-        cmd: 'printf "sifr" | ./sifr-crypt sha256 -',
+        cmd: 'printf "sifr" | ./sha-zero sha256 -',
         output: '9f8e1a44b1c074a5d2e991167c2c44d8f8b2a58c0e4012fa76c218d4029011ab  -',
       },
     ],
   },
-  'sifr-md': {
+  glyphmd: {
     presets: [
       {
         label: 'Render README',
-        cmd: 'cat README.md | sifr-md --width 72',
+        cmd: 'cat README.md | glyphmd --width 72',
         output: [
           '[H1] Cipher Framework',
-          '─────────────────────',
-          '  * Zero dependencies (Wayland socket + Vulkan)',
-          '  * `zig build test` passes without libc wrappers',
+          '---------------------',
+          '  * dlopen("libwayland-client.so.0") + generated wl_interface tables',
+          '  * zig build test passes with Vulkan WSI + wl_shm software fallback',
         ].join('\n'),
       },
       {
         label: 'Code Block Highlight',
-        cmd: 'sifr-md docs/spec.md',
+        cmd: 'glyphmd docs/spec.md',
         output: [
           '[QUOTE] Keep runtime layers minimal and inspectable.',
           '[CODE:rust] fn inflate_block(bits: &mut BitReader) -> Result<Vec<u8>>',
@@ -2063,11 +2065,11 @@ const CLI_TOOL_SPECS: Record<
       },
     ],
   },
-  'sifr-inflate': {
+  huffstream: {
     presets: [
       {
         label: 'Gzip Decompress',
-        cmd: 'sifr-inflate < archive.tar.gz | sha256sum',
+        cmd: 'huffstream < archive.tar.gz | sha256sum',
         output: [
           'header: RFC 1952 gzip (CM=8 DEFLATE)',
           'stream: dynamic Huffman blocks (32 KiB sliding window)',
@@ -2081,11 +2083,11 @@ const CLI_TOOL_SPECS: Record<
       },
     ],
   },
-  'sifr-diff': {
+  hunkdiff: {
     presets: [
       {
         label: 'Unified Diff',
-        cmd: 'sifr-diff -u old.rs new.rs',
+        cmd: 'hunkdiff -u old.rs new.rs',
         output: [
           '@@ -12,4 +12,4 @@ fn handle_client(stream: TcpStream) {',
           '     let path = canonicalize_safe(&req.target)?;',
@@ -2096,16 +2098,16 @@ const CLI_TOOL_SPECS: Record<
       },
       {
         label: 'Exit Codes',
-        cmd: 'sifr-diff a.bin b.bin; echo "exit=$?"',
+        cmd: 'hunkdiff a.bin b.bin; echo "exit=$?"',
         output: 'exit=0 (identical) | exit=1 (differs) | exit=2 (I/O error) matching GNU diff -u',
       },
     ],
   },
-  'sifr-serve': {
+  barehttp: {
     presets: [
       {
         label: 'Serve Directory',
-        cmd: 'sifr-serve ./dist --port 8080',
+        cmd: 'barehttp ./dist --port 8080',
         output: [
           'Listening on http://127.0.0.1:8080 (root ./dist)',
           'GET /index.html     200 text/html (1.5 KB)',
@@ -2128,7 +2130,7 @@ const CLI_TOOL_SPECS: Record<
 };
 
 function SifrCliToolDemo({ repoId }: { repoId: string }) {
-  const spec = CLI_TOOL_SPECS[repoId] ?? CLI_TOOL_SPECS['sifr-serve'];
+  const spec = CLI_TOOL_SPECS[repoId] ?? CLI_TOOL_SPECS.barehttp;
   const [presetIdx, setPresetIdx] = useState(0);
 
   useEffect(() => {

@@ -225,7 +225,10 @@ export function computeNoteFrequency(
   if (!Number.isFinite(rootHz) || rootHz <= 0 || scaleOffsets.length === 0) return 220;
   const safeIdx = Math.abs(Math.floor(stepIndex)) % scaleOffsets.length;
   const semitones = scaleOffsets[safeIdx] + octaveLift * 12;
-  const hz = rootHz * Math.pow(2, semitones / 12);
+  let hz = rootHz * Math.pow(2, semitones / 12);
+  while (hz > 2200) {
+    hz *= 0.5;
+  }
   return Math.round(hz * 100) / 100;
 }
 
@@ -267,9 +270,14 @@ export function computeArpeggioStep(
     step.octaveLift
   );
   const addUpperHarmonic = idx % 8 === 4 || idx % 8 === 7;
-  const harmonicTopHz = addUpperHarmonic
-    ? computeNoteFrequency(profile.rootHz, step.degree + 3, profile.scaleOffsets, 3)
-    : null;
+  let harmonicTopHz: number | null = null;
+  if (addUpperHarmonic) {
+    let candidate = Math.round(noteHz * 1.4983 * 100) / 100; // Perfect fifth overtone above main voice
+    if (candidate > 2400) {
+      candidate = Math.round(noteHz * 1.2599 * 100) / 100; // Major third overtone if near upper bound
+    }
+    harmonicTopHz = candidate;
+  }
 
   return {
     noteHz,

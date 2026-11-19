@@ -7,34 +7,38 @@
 
 # SIFR — Built From Zero
 
-Mohamed Salahy's portfolio: systems, machine learning and native graphics —
-11 public repositories, interactive engineering labs, and 2D polar cipher
-physics. built from zero.
+Mohamed Salahy's (`Sifr-Dev`) engineering portfolio across systems programming, machine learning kernels, and native Linux graphics — 20 public repositories, interactive architecture & benchmark labs, searchable technical dossiers, and a 24-cell polar cipher canvas built from first principles.
 
-## stack
+- **Live Portfolio:** [sifr-dev.vercel.app](https://sifr-dev.vercel.app)
+- **GitHub:** [github.com/Sifr-Dev](https://github.com/Sifr-Dev)
+- **LinkedIn:** [linkedin.com/in/mohamed-salahy](https://www.linkedin.com/in/mohamed-salahy)
 
-- React 19, TypeScript, Vite 8, Tailwind CSS 4, motion
-- `bun.lock` + `package-lock.json` (Bun/Node both work; Node 26 verified)
-- content in `src/data/repos.ts`, story in `src/data/stories.ts`
+## Flagship Systems
 
-## build & verify
+- **Cipher** — Zero-dependency Linux graphics & UI framework in Zig 0.17.1 (`dlopen` `libwayland-client.so.0` + generated `wl_interface` tables, `dlopen` `libvulkan.so.1`, custom SFNT parser, scanline AA R8 glyph atlas, 2-pass flexbox, software SHM fallback).
+- **CipherDesk** — Desktop applications built directly on Cipher linking only `libc`: `janus` (GPU-native terminal), `rex` (Unix-socket multiplexer engine), and `nocturne` (offline bit-exact FLAC music player).
+- **subtorch** — Fused RMSNorm & FlashAttention kernels across PyTorch, Triton, Inductor, and JAX XLA with zero-copy DLPack and 36 numerical parity checks.
+- **verrev** — Early-stage post-quantum peer-to-peer OS prototype in pure Rust (`verrev-hash` Keccak-f[1600], `verrev-crypto` ML-KEM-1024 / ML-DSA-87 / XChaCha20-Poly1305, `verrev-identity`, `verrev-capability`, 48 passing workspace tests across 7 crates).
+
+## Stack
+
+- React 19, TypeScript, Vite 8, Tailwind CSS 4, Express, Recharts
+- Content & verified technical metadata in `src/data/repos.ts`, `src/data/stories.ts`, and `src/data/benchmarks.ts`
+
+## Build & Verify
 
 ```sh
-npm install        # (fixes: esbuild bumped to ^0.28 to satisfy vite 8 peer)
-npm run lint       # tsc --noEmit (exit 0)
-npm test           # node:test via tsx — 13/13 pass
-npm run build      # vite build (~0.5 s)
+npm install
+npm run lint       # tsc --noEmit
+npm test           # node:test via tsx across src/lib/*.test.ts
+npm run build      # vite build
+npm run dev        # Express + Vite middleware on port 3000
 ```
 
-verified on this machine (2026-11-17, Node 26.13.1): `npm install` exit 0,
-`npm run lint` exit 0, `npm test` → 13/13 pass, `npm run build` exit 0.
+## What It Demonstrates
 
-## what it shows
+Interactive simulations and engineering dossiers grounded in the repositories under `https://github.com/Sifr-Dev`: free-list allocator coalescing, bounded RESP2 key-value storage, logistic scoring, capability tokens, Kademlia XOR distance, Wayland/Vulkan geometry, and live GitHub telemetry sync (`src/lib/*.ts`, each with colocated `*.test.ts`).
 
-interactive models of the portfolio's real work: allocator internals, Redis
-command execution, churn prediction, capability scoring, github telemetry
-(`src/lib/*.ts`, each with colocated `*.test.ts`).
+## License
 
-## license
-
-`MIT` — see `LICENSE`. built from zero.
+`MIT` — see `LICENSE`.

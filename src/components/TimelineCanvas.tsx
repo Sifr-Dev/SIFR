@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Layers } from 'lucide-react';
 import type { GitHubProfileSnapshot, RepoSpec } from '../data/repos';
 import { getStoryForRepo } from '../data/stories';
 import type { GitHubAggregateStats } from '../lib/githubStats';
 import { CANONICAL_ACTS, getActForRepoId, type ActId } from '../lib/narrative';
+import { SIFR_LINKEDIN_URL } from '../lib/identity';
 import { computeItemViewportParallax, computeParallaxShift } from '../lib/parallax';
 import { SIFR_DIRECT_EMAIL } from '../lib/signal';
 import {
@@ -16,6 +17,7 @@ import { SifrMark } from './SifrMark';
 import { PhysicsCipherCanvas } from './PhysicsCipherCanvas';
 import { ProjectPhysicsIllustration } from './ProjectPhysicsIllustration';
 import { LivingScrollCue } from './LivingScrollCue';
+import { haptics } from '../lib/haptics';
 
 interface TimelineCanvasProps {
   isMobile: boolean;
@@ -24,6 +26,7 @@ interface TimelineCanvasProps {
   stats: GitHubAggregateStats;
   shift: number;
   onShiftChange: (next: number) => void;
+  onSelectRepo: (repo: RepoSpec) => void;
 }
 
 const ACT_BACKDROP_PLATES: Record<ActId, string> = {
@@ -55,15 +58,9 @@ const DESKTOP_ACT_FRAMES: Record<
   },
 };
 
-const DESKTOP_STAGGER_Y = ['-translate-y-3', 'translate-y-4', '-translate-y-1', 'translate-y-3'];
+const DESKTOP_STAGGER_Y = ['-translate-y-2', 'translate-y-3', '-translate-y-1', 'translate-y-2'];
 
-const PANORAMA_REPOS = new Set([
-  'sifr-ml-systems',
-  'verrev',
-  'sifr-native',
-  'sifr-apps',
-  'SIFR',
-]);
+const PANORAMA_REPOS = new Set(['subtorch', 'verrev', 'Cipher', 'CipherDesk', 'SIFR']);
 
 function getDisplayName(repo: RepoSpec): { title: string } {
   return {
@@ -78,6 +75,7 @@ export function TimelineCanvas({
   stats,
   shift,
   onShiftChange,
+  onSelectRepo,
 }: TimelineCanvasProps) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const motionBlurContainerRef = useRef<HTMLElement | null>(null);
@@ -141,10 +139,10 @@ export function TimelineCanvas({
     if (isMobile) {
       const sy = window.scrollY;
       if (bgGridRef.current) {
-        bgGridRef.current.style.transform = `translate3d(0, ${computeParallaxShift(sy, 0.12)}px, 0)`;
+        bgGridRef.current.style.transform = `translate3d(0, ${computeParallaxShift(sy, 0.08)}px, 0)`;
       }
       if (midAxisRef.current) {
-        midAxisRef.current.style.transform = `translate3d(0, ${computeParallaxShift(sy, 0.28)}px, 0)`;
+        midAxisRef.current.style.transform = `translate3d(0, ${computeParallaxShift(sy, 0.16)}px, 0)`;
       }
       const vh = window.innerHeight || 844;
       const vCenter = vh * 0.5;
@@ -222,7 +220,7 @@ export function TimelineCanvas({
     return () => window.removeEventListener('resize', applyParallaxTransforms);
   }, [applyParallaxTransforms, syncNow, repos.length, isMobile]);
 
-  // Desktop & Tablet: zero-friction dt-normalized mouse-wheel conversion + native horizontal trackpad passthrough
+  // Desktop & Tablet: boundary-aware horizontal glide so vertical page scroll naturally escapes edges
   useEffect(() => {
     if (isMobile) return;
     const el = trackRef.current;
@@ -233,7 +231,6 @@ export function TimelineCanvas({
     let expectedScrollLeft = el.scrollLeft;
 
     const animateScroll = (now: number) => {
-      // Yield immediately if external horizontal scroll (trackpad, scrollbar drag, hash jump) moved the track
       if (Math.abs(el.scrollLeft - expectedScrollLeft) > 3) {
         targetScrollRef.current = el.scrollLeft;
         rafScrollRef.current = 0;
@@ -254,7 +251,6 @@ export function TimelineCanvas({
         rafScrollRef.current = 0;
         return;
       }
-      // Frame-rate independent smooth damping (snappy with zero sluggish tail)
       const factor = 1 - Math.exp(-18 * dt);
       el.scrollLeft += diff * factor;
       expectedScrollLeft = el.scrollLeft;
@@ -273,8 +269,14 @@ export function TimelineCanvas({
       const scale = e.deltaMode === 1 ? 38 : e.deltaMode === 2 ? el.clientWidth * 0.85 : 1;
       const dx = e.deltaX * scale;
       const dy = e.deltaY * scale;
+      const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
 
       if (Math.abs(dy) >= Math.abs(dx) && dy !== 0) {
+        const canAdvanceRight = dy > 0 && el.scrollLeft < maxScroll - 2;
+        const canRewindLeft = dy < 0 && el.scrollLeft > 2;
+        if (!canAdvanceRight && !canRewindLeft) {
+          return;
+        }
         e.preventDefault();
         if (!rafScrollRef.current) {
           targetScrollRef.current = el.scrollLeft;
@@ -282,7 +284,6 @@ export function TimelineCanvas({
         targetScrollRef.current += dy * 1.1;
         wakeLerp();
       } else if (dx !== 0) {
-        // Trackpad horizontal gestures remain direct without added lerp drag
         if (rafScrollRef.current) {
           cancelAnimationFrame(rafScrollRef.current);
           rafScrollRef.current = 0;
@@ -291,30 +292,9 @@ export function TimelineCanvas({
       }
     };
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-        e.preventDefault();
-        if (!rafScrollRef.current) targetScrollRef.current = el.scrollLeft;
-        targetScrollRef.current += 480;
-        wakeLerp();
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        e.preventDefault();
-        if (!rafScrollRef.current) targetScrollRef.current = el.scrollLeft;
-        targetScrollRef.current -= 480;
-        wakeLerp();
-      } else if (e.key === 'Home') {
-        e.preventDefault();
-        targetScrollRef.current = 0;
-        wakeLerp();
-      }
-    };
-
     el.addEventListener('wheel', onWheel, { passive: false });
-    window.addEventListener('keydown', onKeyDown);
-
     return () => {
       el.removeEventListener('wheel', onWheel);
-      window.removeEventListener('keydown', onKeyDown);
       if (rafScrollRef.current) cancelAnimationFrame(rafScrollRef.current);
       rafScrollRef.current = 0;
     };
@@ -323,7 +303,7 @@ export function TimelineCanvas({
   const handleTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isMobile) return;
     const target = e.target as HTMLElement | null;
-    if (target?.closest('a')) return;
+    if (target?.closest('a, button')) return;
     const el = trackRef.current;
     if (!el) return;
     if (rafScrollRef.current) {
@@ -351,7 +331,8 @@ export function TimelineCanvas({
 
   const handleCanvasPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isMobile && pointerAuraRef.current) {
-      pointerAuraRef.current.style.transform = `translate3d(${Math.round(e.clientX - 240)}px, ${Math.round(e.clientY - 240)}px, 0)`;
+      const rect = e.currentTarget.getBoundingClientRect();
+      pointerAuraRef.current.style.transform = `translate3d(${Math.round(e.clientX - rect.left - 240)}px, ${Math.round(e.clientY - rect.top - 240)}px, 0)`;
       pointerAuraRef.current.style.opacity = '1';
     }
     handleTrackPointerMove(e);
@@ -368,7 +349,7 @@ export function TimelineCanvas({
     const widthClass = isMobile
       ? 'w-full'
       : isPanorama
-        ? 'w-[700px] lg:w-[780px]'
+        ? 'w-[680px] lg:w-[750px]'
         : frame.widthClass;
 
     const visualBox = (
@@ -417,17 +398,28 @@ export function TimelineCanvas({
 
     const proseBlock = (
       <div className="space-y-3.5">
-        <p className="text-[16.5px] text-[#f8faff] leading-[1.6] font-semibold">{story.openingHook}</p>
-        <p className="text-[15.5px] text-[#d5dce8] leading-[1.68] font-medium">
+        <p className="text-[16px] text-[#f8faff] leading-[1.6] font-semibold">{story.openingHook}</p>
+        <p className="text-[14.5px] text-[#d5dce8] leading-[1.65] font-medium">
           {story.engineeringNarrative} {story.turningPoint}
         </p>
-        <div className="pt-2 border-t border-[#2d3038]/85 flex flex-wrap items-baseline justify-between gap-2 font-mobilis text-[13px] font-semibold text-[#e9eef7]">
+        <div className="pt-2 border-t border-[#2d3038]/85 flex flex-wrap items-center justify-between gap-2 font-mobilis text-[12.5px] font-semibold text-[#e9eef7]">
           <span className="text-[#eab444]">{repo.proofMetric}</span>
+          <button
+            type="button"
+            onClick={() => {
+              haptics.trigger('detent');
+              onSelectRepo(repo);
+            }}
+            className="min-h-[32px] px-2.5 py-1 border border-[#2d3038] bg-[#04060b] hover:border-[#eab444] text-xs font-bold text-[#f3f7fe] hover:text-[#eab444] inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <Layers className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
+            <span>Inspect Dossier</span>
+          </button>
         </div>
-        <pre className="font-mobilis text-[13px] font-medium leading-[1.6] text-[#e1e6f0] bg-[#04060b] border border-[#2d3038]/80 px-4 py-3 overflow-x-auto no-scrollbar">
+        <pre className="font-mobilis text-[12.5px] font-medium leading-[1.6] text-[#e1e6f0] bg-[#04060b] border border-[#2d3038]/80 px-4 py-3 overflow-x-auto no-scrollbar">
           {repo.codeExcerpt}
         </pre>
-        <p className="text-[14.5px] font-medium text-[#c0c7d6] italic leading-[1.55]">{story.bridgeToNext}</p>
+        <p className="text-[14px] font-medium text-[#c0c7d6] italic leading-[1.55]">{story.bridgeToNext}</p>
       </div>
     );
 
@@ -480,7 +472,7 @@ export function TimelineCanvas({
   };
 
   const endingSection = (
-    <div className={isMobile ? 'space-y-7' : 'w-[600px] lg:w-[680px] space-y-7'}>
+    <div className={isMobile ? 'space-y-7' : 'w-[580px] lg:w-[640px] space-y-7'}>
       <div className="space-y-4">
         <div className="font-mobilis text-xs text-[#eab444] tracking-wider">
           End of the chronicle
@@ -495,7 +487,6 @@ export function TimelineCanvas({
         </p>
       </div>
 
-      {/* Language distribution across the twenty systems */}
       <div className="space-y-2.5 max-w-lg">
         <div className="flex h-1.5 w-full bg-[#171b21] overflow-hidden">
           {stats.languageShares.slice(0, 5).map((lang, idx) => (
@@ -527,7 +518,6 @@ export function TimelineCanvas({
         </div>
       </div>
 
-      {/* Plain human links, zero controls */}
       <div className="flex flex-wrap items-center gap-6 text-sm font-medium text-[#f3f7fe] pt-1">
         <a
           href={profile.htmlUrl}
@@ -535,7 +525,15 @@ export function TimelineCanvas({
           rel="noreferrer"
           className="inline-flex items-center gap-1.5 hover:text-[#eab444] transition-colors"
         >
-          GitHub <ArrowUpRight className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
+          GitHub (Sifr-Dev) <ArrowUpRight className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
+        </a>
+        <a
+          href={SIFR_LINKEDIN_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 hover:text-[#eab444] transition-colors"
+        >
+          LinkedIn <ArrowUpRight className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
         </a>
         <a
           href={`mailto:${SIFR_DIRECT_EMAIL}`}
@@ -548,85 +546,64 @@ export function TimelineCanvas({
   );
 
   // ============================================================================
-  // MOBILE: Vertical downward story progression with scroll-linked fade & parallax
+  // MOBILE: Vertical chronological progression inside #chronicle
   // ============================================================================
   if (isMobile) {
     let runningIndex = 0;
     return (
-      <div
+      <section
+        id="chronicle"
+        aria-label="Chronological Engineering Journey"
         data-audio-state={audioStatus}
-        className="min-h-screen w-full bg-[#04060b] text-[#f3f7fe] relative overflow-x-hidden"
+        className="w-full bg-[#04060b] text-[#f3f7fe] relative overflow-x-hidden border-b border-[#2d3038]"
       >
-        {/* Layer 0: Deep Parallax Field */}
         <div
           ref={bgGridRef}
           aria-hidden="true"
           data-testid="parallax-bg-layer"
-          className="fixed inset-0 pointer-events-none will-change-transform opacity-45"
+          className="absolute inset-0 pointer-events-none will-change-transform opacity-40"
           style={{
             backgroundImage:
               'radial-gradient(circle at 20% 20%, rgba(234,180,68,0.06), transparent 55%), radial-gradient(circle at 1px 1px, rgba(243,247,254,0.06) 1px, transparent 0)',
             backgroundSize: '100% 100%, 36px 36px',
-            height: '130vh',
           }}
         />
 
-        {/* Layer 1: Midground Vertical Guide Spine */}
         <div
           ref={midAxisRef}
           aria-hidden="true"
           data-testid="parallax-mid-layer"
-          className="fixed left-4 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[#2d3038] to-transparent pointer-events-none will-change-transform"
+          className="absolute left-4 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[#2d3038] to-transparent pointer-events-none will-change-transform"
         />
 
-        {/* Minimal Fixed Top Mark */}
-        <header className="fixed top-0 left-0 right-0 z-30 h-12 px-5 bg-[#04060b]/80 backdrop-blur-md border-b border-[#2d3038]/55 flex items-center justify-between">
-          <a href="#top" className="inline-flex items-center gap-2.5 text-left">
-            <SifrMark size={20} className="text-[#f3f7fe]" />
-            <span className="font-stabilis text-sm font-bold tracking-wide text-[#f3f7fe]">
-              SIFR
-            </span>
-          </a>
-          <span className="font-mobilis text-xs text-[#b4bac8]">{activeChapterLabel}</span>
-        </header>
-
-        <main
-          id="top"
+        <div
           ref={(el) => {
             motionBlurContainerRef.current = el;
           }}
-          className="relative z-10 px-5 pt-20 pb-20 space-y-12 max-w-xl mx-auto"
+          className="relative z-10 px-5 pt-14 pb-16 space-y-12 max-w-xl mx-auto"
         >
-          <section
+          <div
             ref={registerSpread('entrance', { label: 'Prologue', pinEdge: 'start' })}
-            className="space-y-6 pt-2"
+            className="space-y-5 pt-2"
           >
             <div className="space-y-3">
               <div className="font-mobilis text-[13px] font-semibold text-[#eab444] tracking-wider">
-                Mohamed Salahy
+                Chronicle · Mohamed Salahy
               </div>
-              <h1 className="font-stabilis text-6xl font-extrabold tracking-tight text-[#ffffff]">
-                SIFR
-              </h1>
+              <h2 className="font-stabilis text-4xl font-extrabold tracking-tight text-[#ffffff]">
+                The Chronological Build
+              </h2>
               <p className="text-base font-medium text-[#d8dfec] leading-relaxed">
                 Twenty systems shaped by one continuous question: how does the layer underneath
                 actually work?
               </p>
             </div>
 
-            <PhysicsCipherCanvas
-              shift={shift}
-              onShiftChange={onShiftChange}
-              compact
-              minimal
-              scrollProgressRef={scrollProgressRef}
-            />
-
             <LivingScrollCue isMobile scrollProgressRef={scrollProgressRef} />
-          </section>
+          </div>
 
           {actGroups.map(({ act, items }) => (
-            <section key={act.id} className="space-y-6 pt-4 relative">
+            <div key={act.id} className="space-y-6 pt-4 relative">
               <img
                 src={ACT_BACKDROP_PLATES[act.id]}
                 alt=""
@@ -643,113 +620,99 @@ export function TimelineCanvas({
                 <div className="font-mobilis text-[13px] font-semibold text-[#eab444]">
                   {act.roman} · {act.timeframe}
                 </div>
-                <h2 className="text-2xl font-extrabold text-[#ffffff]">{act.title}</h2>
+                <h3 className="text-2xl font-extrabold text-[#ffffff]">{act.title}</h3>
                 <p className="text-[15px] font-medium text-[#d5dce8] leading-relaxed">{act.subtitle}</p>
               </div>
 
               <div className="relative z-10 space-y-7">
                 {items.map((repo) => renderSpread(repo, runningIndex++))}
               </div>
-            </section>
+            </div>
           ))}
 
-          <section
+          <div
             ref={registerSpread('ending', { label: 'Epilogue', pinEdge: 'end' })}
             className="pt-8 border-t border-[#2d3038] will-change-[opacity,transform]"
           >
             {endingSection}
-          </section>
-        </main>
-
-        <div
-          aria-hidden="true"
-          className="fixed bottom-0 left-0 right-0 h-[2px] bg-[#171b21] z-30 overflow-hidden"
-        >
-          <div
-            ref={progressBarRef}
-            className="h-full w-full origin-left bg-[#eab444] will-change-transform"
-            style={{ transform: 'scaleX(0)' }}
-          />
+          </div>
         </div>
-      </div>
+      </section>
     );
   }
 
   // ============================================================================
-  // DESKTOP & TABLET: Horizontal moving canvas with scroll-linked fade & multi-depth parallax
+  // DESKTOP & TABLET: Horizontal moving canvas section (#chronicle)
   // ============================================================================
   let desktopItemIndex = 0;
   return (
-    <div
+    <section
+      id="chronicle"
+      aria-label="Chronological Engineering Chronicle"
       data-audio-state={audioStatus}
-      className="h-[100dvh] w-full bg-[#04060b] text-[#f3f7fe] relative overflow-hidden"
+      className="h-[92dvh] min-h-[680px] max-h-[900px] w-full bg-[#04060b] text-[#f3f7fe] relative overflow-hidden border-b border-[#2d3038] flex flex-col"
     >
-      {/* Layer 0: Deep Parallax Field (0.14x horizontal speed) */}
-      <div
-        ref={bgGridRef}
-        aria-hidden="true"
-        data-testid="parallax-bg-layer"
-        className="fixed inset-y-0 left-0 w-[340vw] pointer-events-none will-change-transform opacity-50"
-        style={{
-          backgroundImage:
-            'radial-gradient(ellipse 22% 55% at 15% 45%, rgba(234,180,68,0.06), transparent 70%), radial-gradient(ellipse 18% 50% at 52% 55%, rgba(234,180,68,0.05), transparent 70%), radial-gradient(circle at 1px 1px, rgba(243,247,254,0.055) 1px, transparent 0)',
-          backgroundSize: '100% 100%, 100% 100%, 40px 40px',
-        }}
-      />
-
-      {/* Layer 1: Midground Story Progression Band (0.36x horizontal speed, tucked cleanly at lower band) */}
-      <div
-        ref={midAxisRef}
-        aria-hidden="true"
-        data-testid="parallax-mid-layer"
-        className="fixed bottom-12 left-0 w-[520vw] h-[18px] border-t border-[#2d3038]/55 pointer-events-none will-change-transform flex items-end"
-      >
-        <div className="w-full flex justify-between px-[16vw] font-mobilis text-[10px] tracking-[0.18em] text-[#454c5c]">
-          <span>I · First Systems</span>
-          <span>II · Math to Silicon</span>
-          <span>III · Memory and Trust</span>
-          <span>IV · Crafted From Zero</span>
+      {/* Top Section Indicator Bar */}
+      <div className="relative z-20 h-11 px-6 sm:px-8 border-b border-[#2d3038]/85 bg-[#04060b] flex items-center justify-between shrink-0">
+        <div className="inline-flex items-center gap-2.5">
+          <SifrMark size={18} className="text-[#eab444]" />
+          <span className="font-mobilis text-xs font-semibold text-[#e4e8f1]">
+            Chronological Canvas
+          </span>
         </div>
+        <span className="font-mobilis text-xs font-semibold text-[#eab444]">{activeChapterLabel}</span>
       </div>
 
-      {/* Ambient Cursor Aura Field (GPU compositor-only, zero text impact) */}
-      <div
-        ref={pointerAuraRef}
-        aria-hidden="true"
-        className="fixed top-0 left-0 w-[480px] h-[480px] pointer-events-none z-[2] opacity-0 transition-opacity duration-500 will-change-transform"
-        style={{
-          background:
-            'radial-gradient(circle, rgba(234,180,68,0.065) 0%, rgba(148,158,179,0.025) 42%, transparent 72%)',
-        }}
-      />
+      {/* Horizontal Moving Canvas Stage */}
+      <div className="relative flex-1 min-h-0 overflow-hidden">
+        {/* Layer 0: Deep Parallax Field */}
+        <div
+          ref={bgGridRef}
+          aria-hidden="true"
+          data-testid="parallax-bg-layer"
+          className="absolute inset-y-0 left-0 w-[340vw] pointer-events-none will-change-transform opacity-50"
+          style={{
+            backgroundImage:
+              'radial-gradient(ellipse 22% 55% at 15% 45%, rgba(234,180,68,0.06), transparent 70%), radial-gradient(ellipse 18% 50% at 52% 55%, rgba(234,180,68,0.05), transparent 70%), radial-gradient(circle at 1px 1px, rgba(243,247,254,0.055) 1px, transparent 0)',
+            backgroundSize: '100% 100%, 100% 100%, 40px 40px',
+          }}
+        />
 
-      {/* Soft Optical Cinema Edge Scrims */}
-      <div
-        aria-hidden="true"
-        className="fixed inset-y-0 left-0 w-16 pointer-events-none z-20 bg-gradient-to-r from-[#04060b] via-[#04060b]/55 to-transparent"
-      />
-      <div
-        aria-hidden="true"
-        className="fixed inset-y-0 right-0 w-16 pointer-events-none z-20 bg-gradient-to-l from-[#04060b] via-[#04060b]/55 to-transparent"
-      />
-
-      {/* Minimal Fixed Top Mark with frosted optical blur */}
-      <header className="fixed top-0 left-0 right-0 z-30 h-14 px-8 flex items-center justify-between pointer-events-none bg-gradient-to-b from-[#04060b]/85 via-[#04060b]/45 to-transparent backdrop-blur-[6px]">
-        <a
-          href="#entrance"
-          className="pointer-events-auto inline-flex items-center gap-2.5 group"
+        {/* Layer 1: Midground Story Progression Band */}
+        <div
+          ref={midAxisRef}
+          aria-hidden="true"
+          data-testid="parallax-mid-layer"
+          className="absolute bottom-4 left-0 w-[520vw] h-[18px] border-t border-[#2d3038]/55 pointer-events-none will-change-transform flex items-end"
         >
-          <SifrMark
-            size={22}
-            className="text-[#f3f7fe] group-hover:text-[#eab444] transition-colors"
-          />
-          <span className="font-stabilis text-sm font-bold tracking-wide text-[#f3f7fe]">
-            SIFR
-          </span>
-        </a>
+          <div className="w-full flex justify-between px-[16vw] font-mobilis text-[10px] tracking-[0.18em] text-[#454c5c]">
+            <span>I · First Systems</span>
+            <span>II · Math to Silicon</span>
+            <span>III · Memory and Trust</span>
+            <span>IV · Crafted From Zero</span>
+          </div>
+        </div>
 
-        <span className="font-mobilis text-xs text-[#c2c8d6]">{activeChapterLabel}</span>
-      </header>
+        {/* Ambient Cursor Aura Field */}
+        <div
+          ref={pointerAuraRef}
+          aria-hidden="true"
+          className="absolute top-0 left-0 w-[480px] h-[480px] pointer-events-none z-[2] opacity-0 transition-opacity duration-500 will-change-transform"
+          style={{
+            background:
+              'radial-gradient(circle, rgba(234,180,68,0.065) 0%, rgba(148,158,179,0.025) 42%, transparent 72%)',
+          }}
+        />
+
+        {/* Soft Optical Cinema Edge Scrims */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 w-16 pointer-events-none z-20 bg-gradient-to-r from-[#04060b] via-[#04060b]/55 to-transparent"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 right-0 w-16 pointer-events-none z-20 bg-gradient-to-l from-[#04060b] via-[#04060b]/55 to-transparent"
+        />
 
       {/* Horizontal Moving Canvas */}
       <div
@@ -773,21 +736,20 @@ export function TimelineCanvas({
           className="flex items-center h-full px-10 sm:px-16 gap-10 lg:gap-14 shrink-0"
         >
           {/* Entrance Frame */}
-          <section
+          <div
             ref={registerSpread('entrance', { label: 'Prologue', pinEdge: 'start' })}
-            id="entrance"
-            className="w-[82vw] md:w-[76vw] lg:w-[68vw] max-w-[980px] shrink-0 grid grid-cols-1 md:grid-cols-[1.15fr_0.85fr] gap-10 items-center pr-8"
+            className="w-[74vw] md:w-[68vw] lg:w-[60vw] max-w-[880px] shrink-0 grid grid-cols-1 md:grid-cols-[1.15fr_0.85fr] gap-8 items-center pr-8"
           >
             <div className="space-y-5">
               <div className="font-mobilis text-[13px] font-semibold text-[#eab444] tracking-wider">
-                Mohamed Salahy
+                Chronicle · Mohamed Salahy
               </div>
-              <h1 className="font-stabilis text-7xl lg:text-8xl font-extrabold tracking-tight text-[#ffffff]">
-                SIFR
-              </h1>
-              <p className="text-lg lg:text-[20px] font-medium text-[#d8dfec] max-w-lg leading-[1.6]">
-                Twenty systems shaped by one continuous question: how does the layer underneath
-                actually work?
+              <h2 className="font-stabilis text-5xl lg:text-6xl font-extrabold tracking-tight text-[#ffffff]">
+                Four Acts of Systems Work
+              </h2>
+              <p className="text-base lg:text-lg font-medium text-[#d8dfec] max-w-lg leading-[1.6]">
+                Every system builds on the constraints exposed by the one before it. Drag or scroll
+                across to trace the full arc.
               </p>
               <LivingScrollCue isMobile={false} scrollProgressRef={scrollProgressRef} />
             </div>
@@ -796,14 +758,14 @@ export function TimelineCanvas({
               shift={shift}
               onShiftChange={onShiftChange}
               minimal
+              compact
               scrollProgressRef={scrollProgressRef}
             />
-          </section>
+          </div>
 
           {/* Expanding Story Parts I -> IV with code-generated geometric backdrop plates */}
           {actGroups.map(({ act, items }) => (
             <div key={act.id} className="relative flex items-center gap-8 lg:gap-11 shrink-0">
-              {/* Subtle atmospheric chapter geometric plate anchoring transition between sections */}
               <div
                 aria-hidden="true"
                 className="pointer-events-none select-none absolute -left-24 top-1/2 -translate-y-1/2 w-[560px] h-[380px] z-0 overflow-hidden"
@@ -820,13 +782,13 @@ export function TimelineCanvas({
                 ref={registerSpread(`act-intro-${act.id}`, {
                   label: `${act.roman} · ${act.title}`,
                 })}
-                className="relative z-10 w-[270px] shrink-0 border-t border-[#2d3038] pt-4 space-y-2.5"
+                className="relative z-10 w-[260px] shrink-0 border-t border-[#2d3038] pt-4 space-y-2.5"
               >
                 <div className="font-mobilis text-[13px] font-semibold text-[#eab444]">
                   {act.roman} · {act.timeframe}
                 </div>
-                <h2 className="text-2xl lg:text-[30px] font-extrabold text-[#ffffff]">{act.title}</h2>
-                <p className="text-[15px] font-medium text-[#d5dce8] leading-[1.6]">{act.subtitle}</p>
+                <h3 className="text-2xl lg:text-[28px] font-extrabold text-[#ffffff]">{act.title}</h3>
+                <p className="text-[14.5px] font-medium text-[#d5dce8] leading-[1.6]">{act.subtitle}</p>
               </div>
 
               <div className="relative z-10 flex items-center gap-8 lg:gap-11 shrink-0">
@@ -836,17 +798,18 @@ export function TimelineCanvas({
           ))}
 
           {/* Ending Frame */}
-          <section
+          <div
             ref={registerSpread('ending', { label: 'Epilogue', pinEdge: 'end' })}
             className="shrink-0 pl-8 pr-20"
           >
             {endingSection}
-          </section>
+          </div>
         </div>
+      </div>
       </div>
 
       {/* Bottom Story Progression Track */}
-      <footer className="fixed bottom-0 left-0 right-0 z-30 px-8 py-3 pointer-events-none flex items-center gap-6 bg-gradient-to-t from-[#04060b]/85 via-[#04060b]/40 to-transparent backdrop-blur-[4px]">
+      <div className="relative z-20 px-6 sm:px-8 py-3 border-t border-[#2d3038]/85 bg-[#04060b] flex items-center gap-6 shrink-0">
         <div className="flex-1 h-[2px] bg-[#171b21] relative overflow-hidden">
           <div
             ref={progressBarRef}
@@ -860,7 +823,7 @@ export function TimelineCanvas({
           <span>III. Memory and Trust</span>
           <span>IV. Crafted From Zero</span>
         </div>
-      </footer>
-    </div>
+      </div>
+    </section>
   );
 }

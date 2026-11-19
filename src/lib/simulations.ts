@@ -22,7 +22,7 @@ export interface ChurnPrediction {
   contributions: ChurnContribution[];
 }
 
-// Exact weights from Sifr-Dev/churn_analytics_engine/model_weights.json
+// Exact weights from Sifr-Dev/logitrisk (model_weights.json)
 export const CHURN_MODEL_WEIGHTS = {
   intercept: -0.85,
   tenure: -0.045,
@@ -77,7 +77,7 @@ export function predictChurn(input: ChurnInput): ChurnPrediction {
   };
 }
 
-// Malloc Free-List Allocator Simulator mirroring Sifr-Dev/malloc_allocator/src/malloc.h & malloc.c
+// Malloc Free-List Allocator Simulator mirroring Sifr-Dev/freelist (src/malloc.h & malloc.c)
 // typedef struct header_t { size_t size; unsigned int is_free; struct header_t *next; } header_t; -> 24 bytes on x86_64
 export const MALLOC_HEADER_SIZE = 24;
 
@@ -255,7 +255,7 @@ export function formatHeapDump(heap: HeapState): string[] {
   );
 }
 
-// Redis Clone Command Evaluator mirroring Sifr-Dev/redis_clone (main.go + internal/store.go + api/redis/index.go)
+// Redis Clone Command Evaluator mirroring Sifr-Dev/redwire (main.go + internal/store.go)
 export function executeRedisCommand(
   store: Record<string, string>,
   rawInput: string

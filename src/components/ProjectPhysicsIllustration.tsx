@@ -701,7 +701,7 @@ export function ProjectPhysicsIllustration({
         ctx.fill();
         ctx.stroke();
       } else if (schematic === 'vulkan-apps') {
-        // 19 sifr-apps: rex split panes + cipherterm + nocturne audio bars
+        // 19 CipherDesk: rex split panes + janus + nocturne audio bars
         const panes = [
           { x: 0.12, y: 0.18, w: 0.46, h: 0.64 },
           { x: 0.62, y: 0.18, w: 0.26, h: 0.29 },

@@ -1,9 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, ArrowUpRight, Terminal, BookOpen, Gauge, Link2, Check, Copy } from 'lucide-react';
+import {
+  X,
+  ArrowUpRight,
+  Terminal,
+  BookOpen,
+  Gauge,
+  Link2,
+  Check,
+  Copy,
+  Layers,
+  FileText,
+} from 'lucide-react';
 import type { RepoSpec } from '../data/repos';
 import { getStoryForRepo } from '../data/stories';
 import { buildSceneSharePath, getActForRepoId } from '../lib/narrative';
-import { getLineageForRepo } from '../lib/lineage';
+import { getLineageConnections, getLineageForRepo } from '../lib/lineage';
 import { getTablistTargetIndex } from '../lib/keyboard';
 import { useRepoLiveDetail } from '../hooks/useRepoLiveDetail';
 import { ProjectPhysicsIllustration } from './ProjectPhysicsIllustration';
@@ -11,6 +22,7 @@ import { InteractiveRepoDemo } from './InteractiveDemos';
 import { ReadmeShowcase } from './ReadmeShowcase';
 import { ArchitectureBenchShowcase } from './ArchitectureBenchShowcase';
 import { ContributionTimeline } from './ContributionTimeline';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import { SyntaxCodeBlock } from './SyntaxCodeBlock';
 import { haptics } from '../lib/haptics';
 import { formatRelativeDate } from '../lib/githubStats';
@@ -50,14 +62,16 @@ function RepoLabModalInner({
   onSelectRepo: (repo: RepoSpec) => void;
   allRepos: RepoSpec[];
 }) {
-  const [viewMode, setViewMode] = useState<'demo' | 'bench' | 'readme'>('demo');
+  const [viewMode, setViewMode] = useState<'dossier' | 'depth' | 'demo' | 'bench' | 'readme'>(
+    'dossier'
+  );
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedBuild, setCopiedBuild] = useState(false);
   const viewTabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const liveDetail = useRepoLiveDetail(repo.name);
 
   useEffect(() => {
-    setViewMode('demo');
+    setViewMode('dossier');
     setCopiedLink(false);
     setCopiedBuild(false);
   }, [repo.id]);
@@ -96,6 +110,14 @@ function RepoLabModalInner({
   const story = getStoryForRepo(repo.id);
   const act = getActForRepoId(repo.id);
   const lineage = getLineageForRepo(repo.id);
+  const connections = getLineageConnections(repo.id);
+
+  const maturityColor =
+    repo.maturity === 'Verified'
+      ? 'border-[#40e080]/55 text-[#40e080]'
+      : repo.maturity === 'Prototype'
+        ? 'border-[#eab444]/60 text-[#eab444]'
+        : 'border-[#9498a1]/50 text-[#c9d0de]';
 
   return (
     <div
@@ -103,6 +125,7 @@ function RepoLabModalInner({
       role="dialog"
       aria-modal="true"
       aria-labelledby="repo-lab-title"
+      data-testid="repo-lab-modal"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           haptics.trigger('tap');
@@ -119,17 +142,21 @@ function RepoLabModalInner({
                 {story.stationNumber} · {act.roman}
               </span>
               <span aria-hidden="true">·</span>
-              <span>{story.eraLabel}</span>
+              <span>{repo.categoryLabel}</span>
               <span aria-hidden="true">·</span>
               <span>{repo.primaryLanguage}</span>
+              <span aria-hidden="true">·</span>
+              <span className={`font-mobilis text-[11px] px-1.5 py-0.5 border ${maturityColor}`}>
+                {repo.maturity}
+              </span>
               <span aria-hidden="true" className="hidden sm:inline">
                 ·
               </span>
               <span className="hidden sm:inline">Updated {formatRelativeDate(repo.updatedAt)}</span>
             </div>
             <h2 id="repo-lab-title" className="text-lg sm:text-2xl font-bold text-[#f3f7fe] mt-1 truncate">
-              {repo.id === 'sifr-native'
-                ? 'Cipher (sifr-native): Native Linux UI in Zig'
+              {repo.id === 'Cipher'
+                ? 'Cipher: Native Linux Wayland & Vulkan UI Toolkit in Zig'
                 : `${repo.name}: ${story.chapterTitle}`}
             </h2>
           </div>
@@ -187,12 +214,16 @@ function RepoLabModalInner({
 
         {/* Scrollable Content */}
         <div className="overflow-y-auto p-4 sm:p-5 space-y-4">
-          <div className="border border-[#2d3038] bg-[#0a0d13] p-4 space-y-3">
+          <div className="border border-[#2d3038] bg-[#0a0d13] p-4 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Repository details">
                 {(
                   [
-                    { key: 'demo', label: 'Simulation', icon: Terminal },
+                    { key: 'dossier', label: 'Engineering Dossier', icon: Layers },
+                    ...(repo.engineeringDepthMarkdown
+                      ? [{ key: 'depth' as const, label: 'Engineering Depth', icon: FileText }]
+                      : []),
+                    { key: 'demo', label: 'Interactive Lab', icon: Terminal },
                     { key: 'bench', label: 'Benchmarks & Code', icon: Gauge },
                     { key: 'readme', label: 'README.md', icon: BookOpen },
                   ] as const
@@ -233,10 +264,103 @@ function RepoLabModalInner({
                   );
                 })}
               </div>
-              <span className="font-mobilis text-xs font-medium text-[#a6acb9]">{repo.proofMetric}</span>
+              <span className="font-mobilis text-xs font-medium text-[#eab444]">{repo.proofMetric}</span>
             </div>
 
-            {viewMode === 'demo' ? (
+            {viewMode === 'dossier' ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  <div className="border border-[#2d3038] bg-[#04060b] p-4 space-y-2">
+                    <div className="font-mobilis text-[11px] font-bold uppercase tracking-wider text-[#eab444]">
+                      Problem & Constraints
+                    </div>
+                    <p className="text-[14px] text-[#f3f7fe] leading-[1.6]">{repo.deepDive.problem}</p>
+                  </div>
+                  <div className="border border-[#2d3038] bg-[#04060b] p-4 space-y-2">
+                    <div className="font-mobilis text-[11px] font-bold uppercase tracking-wider text-[#eab444]">
+                      What Was Built
+                    </div>
+                    <p className="text-[14px] text-[#f3f7fe] leading-[1.6]">{repo.deepDive.built}</p>
+                  </div>
+                </div>
+
+                <div className="border border-[#2d3038] bg-[#04060b] p-4 space-y-3">
+                  <div className="font-mobilis text-[11px] font-bold uppercase tracking-wider text-[#eab444]">
+                    Engineering Approach & Core Mechanisms
+                  </div>
+                  <p className="text-[14px] text-[#e4e8f1] leading-[1.6]">{repo.deepDive.approach}</p>
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                    {repo.deepDive.mechanisms.map((mech) => (
+                      <li
+                        key={mech}
+                        className="border border-[#2d3038] bg-[#0a0d13] px-3 py-2 text-[13px] text-[#f3f7fe] leading-[1.5]"
+                      >
+                        <span className="text-[#eab444] font-mobilis mr-2">+</span>
+                        {mech}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                  <div className="border border-[#2d3038] bg-[#04060b] p-4 space-y-1.5">
+                    <div className="font-mobilis text-[11px] font-bold uppercase tracking-wider text-[#a6acb9]">
+                      Benchmark Methodology
+                    </div>
+                    <p className="text-[13px] text-[#e4e8f1] leading-[1.6]">{repo.deepDive.methodology}</p>
+                  </div>
+                  <div className="border border-[#2d3038] bg-[#04060b] p-4 space-y-1.5">
+                    <div className="font-mobilis text-[11px] font-bold uppercase tracking-wider text-[#a6acb9]">
+                      Verification & Correctness
+                    </div>
+                    <p className="text-[13px] text-[#e4e8f1] leading-[1.6]">{repo.deepDive.correctness}</p>
+                  </div>
+                  <div className="border border-[#2d3038] bg-[#04060b] p-4 space-y-1.5">
+                    <div className="font-mobilis text-[11px] font-bold uppercase tracking-wider text-[#a6acb9]">
+                      Maturity & Trade-Offs
+                    </div>
+                    <p className="text-[13px] text-[#e4e8f1] leading-[1.6]">{repo.deepDive.tradeoffs}</p>
+                  </div>
+                </div>
+
+                {(connections.builtUpon.length > 0 || connections.powers.length > 0) && (
+                  <div className="border border-[#2d3038] bg-[#04060b] px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="font-mobilis text-[#a6acb9]">
+                      Architecture Lineage · Branch <span className="text-[#f3f7fe]">{repo.defaultBranch}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 font-mobilis">
+                      {connections.builtUpon.length > 0 && (
+                        <span className="text-[#c9d0de]">
+                          Builds from:{' '}
+                          <strong className="text-[#eab444]">{connections.builtUpon.join(', ')}</strong>
+                        </span>
+                      )}
+                      {connections.powers.length > 0 && (
+                        <span className="text-[#c9d0de]">
+                          Feeds into:{' '}
+                          <strong className="text-[#eab444]">{connections.powers.join(', ')}</strong>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : viewMode === 'depth' && repo.engineeringDepthMarkdown ? (
+              <div className="border border-[#2d3038] bg-[#04060b] p-4 sm:p-5 space-y-3" data-testid="engineering-depth-panel">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[#2d3038]">
+                  <span className="font-mobilis text-xs font-bold text-[#eab444]">
+                    Source-Verified Engineering Depth
+                  </span>
+                  <span className="font-mobilis text-xs text-[#a6acb9]">
+                    github.com/Sifr-Dev/{repo.name}
+                  </span>
+                </div>
+                <MarkdownRenderer
+                  markdown={repo.engineeringDepthMarkdown}
+                  maxHeightClass="max-h-[460px]"
+                />
+              </div>
+            ) : viewMode === 'demo' ? (
               <InteractiveRepoDemo repo={repo} />
             ) : viewMode === 'bench' ? (
               <ArchitectureBenchShowcase repo={repo} />
@@ -258,7 +382,7 @@ function RepoLabModalInner({
 
             <div className="border border-[#2d3038] bg-[#04060b] p-5 flex flex-col justify-between space-y-4">
               <div>
-                <div className="text-xs font-bold text-[#a6acb9] mb-3">Specs</div>
+                <div className="text-xs font-bold text-[#a6acb9] mb-3">Verified Specs</div>
                 <div className="divide-y divide-[#2d3038]">
                   {repo.highlights.map((h) => (
                     <div key={h.label} className="py-2 flex items-baseline justify-between gap-3">

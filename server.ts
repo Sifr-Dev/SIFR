@@ -9,10 +9,12 @@ import {
   INITIAL_ACTIVITY,
   INITIAL_PROFILE,
   REPOSITORIES,
+  findRepoByIdOrAlias,
   type GitHubActivityItem,
   type GitHubProfileSnapshot,
   type RepoSpec,
 } from './src/data/repos.ts';
+import { SIFR_GITHUB_OWNER, resolveCanonicalRepoId } from './src/lib/identity.ts';
 import { injectOgMetaIntoHtml, resolveSceneMetadata } from './src/lib/ogMeta.ts';
 import {
   generateDispatchReceiptId,
@@ -101,9 +103,9 @@ async function fetchOverviewPayload(): Promise<OverviewCacheEntry> {
   try {
     const headers = githubHeaders();
     const [userRes, reposRes, eventsRes] = await Promise.all([
-      fetch('https://api.github.com/users/Sifr-Dev', { headers }),
-      fetch('https://api.github.com/users/Sifr-Dev/repos?per_page=100&sort=pushed', { headers }),
-      fetch('https://api.github.com/users/Sifr-Dev/events/public?per_page=20', { headers }),
+      fetch(`https://api.github.com/users/${SIFR_GITHUB_OWNER}`, { headers }),
+      fetch(`https://api.github.com/users/${SIFR_GITHUB_OWNER}/repos?per_page=100&sort=pushed`, { headers }),
+      fetch(`https://api.github.com/users/${SIFR_GITHUB_OWNER}/events/public?per_page=20`, { headers }),
     ]);
 
     if (
@@ -184,7 +186,7 @@ async function fetchOverviewPayload(): Promise<OverviewCacheEntry> {
       }>;
       if (Array.isArray(evList) && evList.length > 0) {
         activity = evList.slice(0, 8).map((ev) => {
-          const rawRepo = ev.repo?.name ?? 'Sifr-Dev/SIFR';
+          const rawRepo = ev.repo?.name ?? `${SIFR_GITHUB_OWNER}/SIFR`;
           const shortRepo = rawRepo.includes('/') ? rawRepo.split('/')[1] : rawRepo;
           return {
             id: ev.id,
@@ -212,9 +214,31 @@ async function fetchOverviewPayload(): Promise<OverviewCacheEntry> {
   }
 }
 
+async function fetchRawReadmeFallback(canonicalName: string, preferredBranch?: 'main' | 'master'): Promise<string | null> {
+  const branches: Array<'main' | 'master'> =
+    preferredBranch === 'master' ? ['master', 'main'] : ['main', 'master'];
+  for (const branch of branches) {
+    try {
+      const res = await fetch(
+        `https://raw.githubusercontent.com/${SIFR_GITHUB_OWNER}/${encodeURIComponent(canonicalName)}/${branch}/README.md`,
+        { headers: { 'User-Agent': 'SIFR-Portfolio-Showcase' } }
+      );
+      if (res.ok) {
+        const text = await res.text();
+        if (text.trim().length > 0) return text;
+      }
+    } catch {
+      // Try next branch
+    }
+  }
+  return null;
+}
+
 async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCacheEntry> {
-  const cleanName = repoName.replace(/[^A-Za-z0-9._-]/g, '');
-  const key = cleanName.toLowerCase();
+  const cleanRaw = repoName.replace(/[^A-Za-z0-9._-]/g, '');
+  const matchedRepo = findRepoByIdOrAlias(cleanRaw);
+  const canonicalName = matchedRepo?.name ?? resolveCanonicalRepoId(cleanRaw);
+  const key = canonicalName.toLowerCase();
   const now = Date.now();
   const existing = repoDetailCache.get(key);
   if (existing && existing.expiresAt > now) {
@@ -228,16 +252,27 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
     rawReadme: null,
   };
 
-  if (!cleanName || githubRateLimitUntil > now) {
-    repoDetailCache.set(key, { ...emptyEntry, expiresAt: Math.max(now + 60_000, githubRateLimitUntil) });
+  if (!canonicalName) {
+    repoDetailCache.set(key, { ...emptyEntry, expiresAt: now + 60_000 });
     return emptyEntry;
+  }
+
+  if (githubRateLimitUntil > now) {
+    const rawReadme = await fetchRawReadmeFallback(canonicalName, matchedRepo?.defaultBranch);
+    const fallbackEntry: RepoDetailCacheEntry = {
+      ...emptyEntry,
+      rawReadme,
+      expiresAt: Math.max(now + 120_000, githubRateLimitUntil),
+    };
+    repoDetailCache.set(key, fallbackEntry);
+    return fallbackEntry;
   }
 
   try {
     const headers = githubHeaders();
     const [commitRes, contentsRes] = await Promise.all([
-      fetch(`https://api.github.com/repos/Sifr-Dev/${cleanName}/commits?per_page=100`, { headers }),
-      fetch(`https://api.github.com/repos/Sifr-Dev/${cleanName}/contents`, { headers }),
+      fetch(`https://api.github.com/repos/${SIFR_GITHUB_OWNER}/${encodeURIComponent(canonicalName)}/commits?per_page=100`, { headers }),
+      fetch(`https://api.github.com/repos/${SIFR_GITHUB_OWNER}/${encodeURIComponent(canonicalName)}/contents`, { headers }),
     ]);
 
     if (
@@ -247,7 +282,8 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
       contentsRes.status === 429
     ) {
       githubRateLimitUntil = now + COOLDOWN_MS;
-      const cooled: RepoDetailCacheEntry = { ...emptyEntry, expiresAt: githubRateLimitUntil };
+      const rawReadme = await fetchRawReadmeFallback(canonicalName, matchedRepo?.defaultBranch);
+      const cooled: RepoDetailCacheEntry = { ...emptyEntry, rawReadme, expiresAt: githubRateLimitUntil };
       repoDetailCache.set(key, cooled);
       return cooled;
     }
@@ -276,7 +312,7 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
             sha: top.sha.slice(0, 7),
             message: (top.commit?.message ?? 'Updated repository').split('\n')[0].trim(),
             date: top.commit?.author?.date ?? '',
-            author: top.commit?.author?.name ?? 'Sifr-Dev',
+            author: top.commit?.author?.name ?? SIFR_GITHUB_OWNER,
           };
         }
       }
@@ -301,6 +337,10 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
       }
     }
 
+    if (!rawReadme) {
+      rawReadme = await fetchRawReadmeFallback(canonicalName, matchedRepo?.defaultBranch);
+    }
+
     const entry: RepoDetailCacheEntry = {
       expiresAt: now + CACHE_TTL_MS,
       commit,
@@ -310,7 +350,8 @@ async function fetchRepoDetailPayload(repoName: string): Promise<RepoDetailCache
     repoDetailCache.set(key, entry);
     return entry;
   } catch {
-    const cooled: RepoDetailCacheEntry = { ...emptyEntry, expiresAt: now + 60_000 };
+    const rawReadme = await fetchRawReadmeFallback(canonicalName, matchedRepo?.defaultBranch).catch(() => null);
+    const cooled: RepoDetailCacheEntry = { ...emptyEntry, rawReadme, expiresAt: now + 60_000 };
     repoDetailCache.set(key, cooled);
     return cooled;
   }

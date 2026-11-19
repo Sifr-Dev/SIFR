@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ArrowUpRight, Check, Copy, Send, Terminal } from 'lucide-react';
+import { SIFR_GITHUB_URL, SIFR_LINKEDIN_URL } from '../lib/identity';
 import {
   SIGNAL_TOPICS,
   SIFR_DIRECT_EMAIL,
@@ -110,23 +111,41 @@ export function SignalDispatchSection({ compact = false }: SignalDispatchSection
           </h3>
         </div>
 
-        <button
-          type="button"
-          onClick={handleCopyEmail}
-          className="min-h-[38px] px-3 py-1.5 border border-[#2d3038] bg-[#04060b] hover:border-[#eab444] font-mobilis text-xs text-[#f3f7fe] inline-flex items-center gap-2 cursor-pointer"
-        >
-          {copiedEmail ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-[#40e080]" aria-hidden="true" />
-              <span>Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
-              <span className="truncate max-w-[210px] sm:max-w-none">{SIFR_DIRECT_EMAIL}</span>
-            </>
-          )}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={SIFR_GITHUB_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="min-h-[38px] px-3 py-1.5 border border-[#2d3038] bg-[#04060b] hover:border-[#eab444] font-mobilis text-xs text-[#e4e8f1] inline-flex items-center gap-1.5"
+          >
+            GitHub <ArrowUpRight className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
+          </a>
+          <a
+            href={SIFR_LINKEDIN_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="min-h-[38px] px-3 py-1.5 border border-[#2d3038] bg-[#04060b] hover:border-[#eab444] font-mobilis text-xs text-[#e4e8f1] inline-flex items-center gap-1.5"
+          >
+            LinkedIn <ArrowUpRight className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
+          </a>
+          <button
+            type="button"
+            onClick={handleCopyEmail}
+            className="min-h-[38px] px-3 py-1.5 border border-[#2d3038] bg-[#04060b] hover:border-[#eab444] font-mobilis text-xs text-[#f3f7fe] inline-flex items-center gap-2 cursor-pointer"
+          >
+            {copiedEmail ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-[#40e080]" aria-hidden="true" />
+                <span>Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 text-[#eab444]" aria-hidden="true" />
+                <span className="truncate max-w-[210px] sm:max-w-none">{SIFR_DIRECT_EMAIL}</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleDispatch} className="space-y-3" noValidate>
